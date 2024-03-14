@@ -183,7 +183,7 @@ html_theme_options = {
     "pytorch_project": "executorch",
     "display_version": True,
     "logo_only": True,
-    "collapse_navigation": False,
+    "collapse_navigation": True, # changed to enable 3rd level nav.
     "sticky_navigation": False,
     "navigation_depth": 4,
     "includehidden": True,

@@ -172,3 +172,14 @@ article.pytorch-article .class .simple dt {
 article.pytorch-article .function dt.sig {
     border-top: none;
 }
+
+/* styles needed for 3rd level left nav */
+
+.pytorch-left-menu ul, .pytorch-right-menu ul {
+    margin-left: 1.2em;
+}
+
+.pytorch-left-menu li.toctree-l2.current > a {    
+    color: #e44c2c;
+}
+

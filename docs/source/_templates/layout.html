@@ -59,10 +59,27 @@
 
 {% endblock %}
 
+<!-- START OF LOCAL OVERRIDE -->
+<!--  This block overrides the theme to enable third level left navigation.-->
+{% block menu %}
+    {% if 'singlehtml' not in builder %}
+         {% set global_toc = toctree(collapse=theme_collapse_navigation|tobool,
+                                     includehidden=theme_includehidden|tobool,
+                                     titles_only=theme_titles_only|tobool) %}
+         {% endif %}
+         {% if global_toc %}
+              {{ global_toc }}
+         {% else %}
+              <!-- Local TOC -->
+              <div class="local-toc">{{ toc }}</div>
+         {% endif %}
+{% endblock %}
+<!-- END OF LOCAL OVERRIDE -->  
+
 {% block footer %}
 {{ super() }}
 <script script type="text/javascript">
-  var collapsedSections = ['Introduction', 'Getting Started', 'Working with LLMs', 'Exporting to ExecuTorch',  'API Reference', 'IR Specification', 'Compiler Entry Points', 'Runtime', 'Quantization', 'Kernel Library', 'Native Delegates', 'SDK', 'Tutorials']
+  var collapsedSections = ['Introduction', 'Getting Started', 'Working with LLMs', 'Exporting to ExecuTorch',  'API Reference', 'IR Specification', 'Compiler Entry Points', 'Runtime', 'Quantization', 'Kernel Library', 'Native Delegates', 'Backend Delegates', 'SDK', 'Tutorials']
 </script>
 
 {{ super() }}
