@@ -24,6 +24,8 @@ except ImportError:
 
 from ..model_base import EagerModelBase
 
+MODEL_NAME = "dummy_400k"
+
 
 class Llama2Model(EagerModelBase):
     def __init__(self, **kwargs):
@@ -51,11 +53,11 @@ class Llama2Model(EagerModelBase):
         checkpoint_path = (
             kwargs["checkpoint"]
             if "checkpoint" in kwargs
-            else ckpt_dir / "demo_rand_params.pth"
+            else ckpt_dir / f"{MODEL_NAME}.pth"
         )
 
         params_path = (
-            kwargs["params"] if "params" in kwargs else ckpt_dir / "demo_config.json"
+            kwargs["params"] if "params" in kwargs else ckpt_dir / f"{MODEL_NAME}.json"
         )
 
         self.use_kv_cache = (

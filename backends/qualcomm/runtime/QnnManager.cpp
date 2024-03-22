@@ -30,8 +30,19 @@ QnnManager::QnnManager(
       // kept by executorch runtime framework
       // please pay attention to any potential seg fault
       options_(options) {
+  QNN_EXECUTORCH_LOG_INFO("ET DEBUG: START QnnManager()");
+  if (options == nullptr) {
+    QNN_EXECUTORCH_LOG_INFO("ET DEBUG: options is nullptr");
+  }
+  if (options->backend_options() == nullptr) {
+    QNN_EXECUTORCH_LOG_INFO("ET DEBUG: backend_options is nullptr");
+  }
+  if (options->library_path() == nullptr) {
+    QNN_EXECUTORCH_LOG_INFO("ET DEBUG: library_path is nullptr");
+  }
   QnnExecuTorchBackendType backend_type =
       options->backend_options()->backend_type();
+  QNN_EXECUTORCH_LOG_INFO("ET DEBUG: BEFORE library_path()");
   std::string library_path = options->library_path()->str();
 
   if (options->log_level() >= QnnExecuTorchLogLevel::kLogLevelInfo) {
