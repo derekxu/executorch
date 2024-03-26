@@ -6,6 +6,7 @@
 
 import json
 from pathlib import Path
+from collections import OrderedDict
 
 import torch
 
@@ -101,6 +102,55 @@ the checkpoint format to avoid generating faulty models.
 """
             )
 
+        # # import pdb; pdb.set_trace()
+        # # checkpoint = self.convert_bfloat16_to_float(checkpoint, MODEL_NAME)
+        # checkpoint["tok_embeddings.weight"] = checkpoint["tok_embeddings.weight"].float()
+        # # layers
+        # # 0.5B -> 8 layers
+        # # 1.4B -> 24 layers
+        # num_layers = 8
+        # if MODEL_NAME == "cria_1b4":
+        #     num_layers = 24
+
+        # for i in range(num_layers):
+        #     checkpoint[f"layers.{i}.attention.wq.weight"] = checkpoint[
+        #         f"layers.{i}.attention.wq.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.attention.wk.weight"] = checkpoint[
+        #         f"layers.{i}.attention.wk.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.attention.wv.weight"] = checkpoint[
+        #         f"layers.{i}.attention.wv.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.attention.wo.weight"] = checkpoint[
+        #         f"layers.{i}.attention.wo.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.feed_forward.w1.weight"] = checkpoint[
+        #         f"layers.{i}.feed_forward.w1.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.feed_forward.w2.weight"] = checkpoint[
+        #         f"layers.{i}.feed_forward.w2.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.feed_forward.w3.weight"] = checkpoint[
+        #         f"layers.{i}.feed_forward.w3.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.attention_norm.weight"] = checkpoint[
+        #         f"layers.{i}.attention_norm.weight"
+        #     ].float()
+        #     checkpoint[f"layers.{i}.ffn_norm.weight"] = checkpoint[
+        #         f"layers.{i}.ffn_norm.weight"
+        #     ].float()
+
+        # checkpoint["norm.weight"] = checkpoint["norm.weight"].float()
+        # checkpoint["output.weight"] = checkpoint["output.weight"].float()
+
+        checkpoint = self.convert_bfloat16_to_float(checkpoint, MODEL_NAME)
+
+        for idx in iter(checkpoint):
+            cur = checkpoint[idx]
+            if cur.dtype == torch.float16:
+                checkpoint[idx] = checkpoint[idx].float()
+
         # get checkpoint dtype
         self.dtype = None
         if len(checkpoint) > 0:
@@ -162,6 +212,50 @@ the checkpoint format to avoid generating faulty models.
             strict=False,
             assign=True,
         )  # self.model_ = Transformer(gptconf)
+
+    def convert_bfloat16_to_float(self, checkpoint, model_name):
+        output_ckpt = OrderedDict()
+        output_ckpt["tok_embeddings.weight"] = checkpoint["tok_embeddings.weight"].float()
+        # layers
+        # 0.5B -> 8 layers
+        # 1.4B -> 24 layers
+        num_layers = 8
+        if model_name == "cria_1b4":
+            num_layers = 24
+
+        for i in range(num_layers):
+            output_ckpt[f"layers.{i}.attention.wq.weight"] = checkpoint[
+                f"layers.{i}.attention.wq.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.attention.wk.weight"] = checkpoint[
+                f"layers.{i}.attention.wk.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.attention.wv.weight"] = checkpoint[
+                f"layers.{i}.attention.wv.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.attention.wo.weight"] = checkpoint[
+                f"layers.{i}.attention.wo.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.feed_forward.w1.weight"] = checkpoint[
+                f"layers.{i}.feed_forward.w1.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.feed_forward.w2.weight"] = checkpoint[
+                f"layers.{i}.feed_forward.w2.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.feed_forward.w3.weight"] = checkpoint[
+                f"layers.{i}.feed_forward.w3.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.attention_norm.weight"] = checkpoint[
+                f"layers.{i}.attention_norm.weight"
+            ].float()
+            output_ckpt[f"layers.{i}.ffn_norm.weight"] = checkpoint[
+                f"layers.{i}.ffn_norm.weight"
+            ].float()
+
+        output_ckpt["norm.weight"] = checkpoint["norm.weight"].float()
+        output_ckpt["output.weight"] = checkpoint["output.weight"].float()
+        return output_ckpt
+
 
     def get_eager_model(self):
         if self.dtype:

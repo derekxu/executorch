@@ -29,7 +29,6 @@ QNN_QUANT_TYPE_MAP = {
 }
 QNN_TENSOR_TYPE_MAP = {
     torch.float32: PyQnnWrapper.Qnn_DataType_t.QNN_DATATYPE_FLOAT_32,
-    torch.bfloat16: PyQnnWrapper.Qnn_DataType_t.QNN_DATATYPE_FLOAT_32,
     torch.int8: PyQnnWrapper.Qnn_DataType_t.QNN_DATATYPE_INT_8,
     torch.int16: PyQnnWrapper.Qnn_DataType_t.QNN_DATATYPE_INT_16,
     torch.int32: PyQnnWrapper.Qnn_DataType_t.QNN_DATATYPE_INT_32,
@@ -192,8 +191,10 @@ class NodeVisitor:
         quant_config: Dict,
         is_tensor: bool,
     ) -> PyQnnWrapper.Qnn_TensorType_t:
-        # if tensor.dtype == torch.bfloat16:
-        #     tensor.dtype = float
+        if tensor.dtype == torch.bfloat16:
+            # import pdb; pdb.set_trace()
+            print(f"tensor dtype==bfloat16 {tensor}")
+            tensor.float()
         if quant_config and is_tensor:
             quant_range = quant_config["quant_max"] - quant_config["quant_min"]
             unsigned = quant_config["quant_min"] >= 0
@@ -256,7 +257,7 @@ class NodeVisitor:
         node_name: str = None,
     ) -> PyQnnWrapper.TensorWrapper:
         # if tensor.dtype == torch.bfloat16:
-        #     tensor.dtype = float
+        #     tensor = tensor.to(torch.float32)
         if node_name is None:
             node_name = node.name
 
@@ -284,10 +285,10 @@ class NodeVisitor:
         else:
             if quant_configs:
                 tensor = self.get_quant_tensor_value(node, tensor, dtype)
-            # import pdb; pdb.set_trace()
-            detach_tensor = tensor.detach()
-            if detach_tensor.dtype == torch.bfloat16:
-                detach_tensor = detach_tensor.double()
+            # # import pdb; pdb.set_trace()
+            # detach_tensor = tensor.detach()
+            # if detach_tensor.dtype == torch.bfloat16:
+            #     detach_tensor = detach_tensor.double()
             tensor_wrapper = PyQnnWrapper.TensorWrapper(
                 tensor_name,
                 tensor_type,
@@ -296,7 +297,7 @@ class NodeVisitor:
                 quant_configs,
                 len(dims),
                 dims,
-                detach_tensor.numpy(),
+                tensor.detach().numpy(),
                 True,
             )
         nodes_to_wrappers[node_name] = tensor_wrapper
