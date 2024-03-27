@@ -190,9 +190,12 @@ def build_executorch_binary(
     )
     edge_prog.exported_program = to_backend(edge_prog.exported_program, qnn_partitioner)
     edge_prog.exported_program.graph_module.graph.print_tabular()
+    print("BEFORE to_executorch")
+    # import pdb; pdb.set_trace()
     exec_prog = edge_prog.to_executorch(
-        config=ExecutorchBackendConfig(extract_constant_segment=False)
+        config=ExecutorchBackendConfig(extract_constant_segment=False, extract_delegate_segments=True)
     )
+    print(f"BEFORE write buffer to {file_name}.pte")
     with open(f"{file_name}.pte", "wb") as file:
         file.write(exec_prog.buffer)
 

@@ -56,8 +56,8 @@ with-proxy pip install --force-reinstall --pre torch=="${TORCH_VERSION}" -i http
 
 TORCH_VISION_VERSION=0.18.0.${NIGHTLY_VERSION}
 with-proxy pip install --force-reinstall --pre torchvision=="${TORCH_VISION_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
-with-proxy conda install numpy="1.26.4"
-with-proxy pip install --force-reinstall numpy=="1.26.4"
+# with-proxy conda install numpy="1.26.4"
+# with-proxy pip install --force-reinstall numpy=="1.26.4"
 
 TORCH_AUDIO_VERSION=2.2.0.${NIGHTLY_VERSION}
 with-proxy pip install --force-reinstall --pre torchaudio=="${TORCH_AUDIO_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
