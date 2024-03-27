@@ -27,8 +27,8 @@ from ..model_base import EagerModelBase
 
 
 # MODEL_NAME = "dummy_400k"
-# MODEL_NAME = "cria_1b4"
-MODEL_NAME = "cria_0b5"
+MODEL_NAME = "cria_1b4"
+# MODEL_NAME = "cria_0b5"
 
 
 class Llama2Model(EagerModelBase):
