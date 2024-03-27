@@ -52,25 +52,25 @@ done
 NIGHTLY_VERSION=dev20240312
 
 TORCH_VERSION=2.3.0.${NIGHTLY_VERSION}
-pip install --force-reinstall --pre torch=="${TORCH_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
+with-proxy pip install --force-reinstall --pre torch=="${TORCH_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
 
 TORCH_VISION_VERSION=0.18.0.${NIGHTLY_VERSION}
-pip install --force-reinstall --pre torchvision=="${TORCH_VISION_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
+with-proxy pip install --force-reinstall --pre torchvision=="${TORCH_VISION_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
 
 TORCH_AUDIO_VERSION=2.2.0.${NIGHTLY_VERSION}
-pip install --force-reinstall --pre torchaudio=="${TORCH_AUDIO_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
+with-proxy pip install --force-reinstall --pre torchaudio=="${TORCH_AUDIO_VERSION}" -i https://download.pytorch.org/whl/nightly/cpu
 
 TIMM_VERSION=0.6.13
-pip install --pre timm==${TIMM_VERSION}
+with-proxy pip install --pre timm==${TIMM_VERSION}
 
 TRANSFORMERS_VERSION=4.38.2
-pip install --force-reinstall --pre transformers==${TRANSFORMERS_VERSION}
+with-proxy pip install --force-reinstall --pre transformers==${TRANSFORMERS_VERSION}
 
 TORCHSR_VERSION=1.0.4
-pip install --pre torchsr==${TORCHSR_VERSION}
+with-proxy pip install --pre torchsr==${TORCHSR_VERSION}
 
 # Install ExecuTorch after dependencies are installed.
-EXECUTORCH_BUILD_PYBIND="$EXECUTORCH_BUILD_PYBIND" \
+with-proxy EXECUTORCH_BUILD_PYBIND="$EXECUTORCH_BUILD_PYBIND" \
 CMAKE_ARGS="$CMAKE_ARGS" \
 CMAKE_BUILD_PARALLEL_LEVEL=9 \
 pip install . --no-build-isolation -v
