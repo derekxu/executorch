@@ -27,6 +27,7 @@
 #include <gflags/gflags.h>
 
 #include <fstream>
+#include <strstream>
 #include <memory>
 
 static uint8_t method_allocator_pool[4 * 1024U * 1024U]; // 4 MB
@@ -217,8 +218,11 @@ int main(int argc, char** argv) {
         fin.close();
 
         std::vector<TensorImpl::SizesType> sizes(t.dim());
+
+        ET_LOG(Info, "Input(%d) tensor byte size: %zu; Sizes", input_index, t.nbytes());
         for (int i = 0; i < sizes.size(); ++i) {
           sizes[i] = t.sizes().data()[i];
+          ET_LOG(Info, "%zu,", sizes[i]);
         }
 
         auto t_impl = TensorImpl(
@@ -268,6 +272,7 @@ int main(int argc, char** argv) {
       // dtypes. Furthermore, we need a util to print tensors in a more
       // interpretable (e.g. size, dtype) and readable way.
       // TODO for the above at T159700776
+      std::strstream streamOut;
       for (size_t output_index = 0; output_index < method->outputs_size();
            output_index++) {
         auto output_tensor = outputs[output_index].toTensor();
@@ -278,6 +283,9 @@ int main(int argc, char** argv) {
         fout.write(
             output_tensor.const_data_ptr<char>(), output_tensor.nbytes());
         fout.close();
+        streamOut.write(
+            output_tensor.const_data_ptr<char>(), output_tensor.nbytes());
+        ET_LOG(Info, "Output[%zu], %s", output_index, streamOut.str());
       }
 
       // Dump the profiling data to the specified file.
@@ -298,6 +306,7 @@ int main(int argc, char** argv) {
         elapsed_time / inference_index);
   } else {
     // if no input is provided, run with default input as executor_runner.
+    ET_LOG(Info, "Input not provided, running with default input.");
     Error status = method->execute();
     ET_CHECK_MSG(
         status == Error::Ok,

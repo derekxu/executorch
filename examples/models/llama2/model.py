@@ -30,6 +30,9 @@ from ..model_base import EagerModelBase
 MODEL_NAME = "cria_1b4"
 # MODEL_NAME = "cria_0b5"
 
+INPUTS = [1]
+# INPUTS = [1,2,3]
+
 
 class Llama2Model(EagerModelBase):
     def __init__(self, **kwargs):
@@ -273,7 +276,7 @@ the checkpoint format to avoid generating faulty models.
         else:
             return (
                 torch.tensor(
-                    [[1, 2, 3]], dtype=torch.long
+                    [INPUTS], dtype=torch.long
                 ),  # tokens, with kv cache our input token length is always just 1 token.
             )
 

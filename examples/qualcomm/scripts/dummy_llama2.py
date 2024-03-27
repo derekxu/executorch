@@ -11,7 +11,7 @@ from multiprocessing.connection import Client
 
 import numpy as np
 import torch
-from executorch.examples.models.llama2 import Llama2Model, MODEL_NAME
+from executorch.examples.models.llama2 import Llama2Model, INPUTS, MODEL_NAME
 from executorch.examples.qualcomm.scripts.utils import (
     build_executorch_binary,
     make_output_dir,
@@ -19,19 +19,29 @@ from executorch.examples.qualcomm.scripts.utils import (
     SimpleADB,
 )
 
+INPUT_LEN = len(INPUTS)
+
 
 def create_device_inputs(example_inputs, use_kv_cache):
+    print(f"Length of example inputs: {len(example_inputs)}")
+    for i,inp in enumerate(example_inputs):
+        print(f"Input {i}: {inp.size()}")
     inputs = [inp.to(torch.int32) for inp in example_inputs]
     input_list = ""
+    filename = f"input_len_{INPUT_LEN}_0_0.raw"
     if use_kv_cache:
         for i, d in enumerate(inputs[0]):
             if type(d) == list:
                 d = torch.stack(d)
-            d.numpy().tofile(f"{args.artifact}/input_0_0.raw")
+            np_inp = d.numpy()
+            np_inp.tofile(f"{args.artifact}/{filename}")
+            print(f"input: {np_inp}")
             input_list = f"input_0_{i}.raw "
     else:
-        inputs[0].numpy().tofile(f"{args.artifact}/input_0_0.raw")
-        input_list = "input_0_0.raw"
+        np_inp = inputs[0].numpy()
+        np_inp.tofile(f"{args.artifact}/{filename}")
+        print(f"input: {np_inp}")
+        input_list = f"{filename}"
     input_list += "\n"
     return tuple(inputs), input_list
 
@@ -87,7 +97,7 @@ if __name__ == "__main__":
         instance.get_example_inputs(), args.use_kv_cache
     )
 
-    pte_filename = MODEL_NAME
+    pte_filename = f"{MODEL_NAME}_len_{INPUT_LEN}"
 
     use_fp16 = False if args.ptq else True
     build_executorch_binary(
@@ -99,7 +109,15 @@ if __name__ == "__main__":
         custom_annotations=(),
         use_fp16=use_fp16,
     )
+    for i,inp in enumerate(instance.get_example_inputs()):
+        print(f"Input {i}: {inp.size()}")
     print(f"PTE: {args.artifact}/{pte_filename}.pte")
+    input_list_file = f"{args.artifact}/input_list_len_{INPUT_LEN}.txt"
+    with open(input_list_file, "w") as f:
+        f.write(input_list)
+        f.flush()
+    print(f"input_list: {input_list}")
+    print(f"input_list file: {input_list_file}")
     # adb = SimpleADB(
     #     qnn_sdk=os.getenv("QNN_SDK_ROOT"),
     #     artifact_path=f"{args.build_folder}",
@@ -110,6 +128,7 @@ if __name__ == "__main__":
     #     soc_model=args.model,
     # )
     # adb.push(inputs=inputs, input_list=input_list)
+
     # adb.execute()
 
     # # collect output data
