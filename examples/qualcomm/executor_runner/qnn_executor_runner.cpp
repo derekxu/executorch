@@ -27,7 +27,6 @@
 #include <gflags/gflags.h>
 
 #include <fstream>
-#include <strstream>
 #include <memory>
 
 static uint8_t method_allocator_pool[4 * 1024U * 1024U]; // 4 MB
@@ -272,7 +271,6 @@ int main(int argc, char** argv) {
       // dtypes. Furthermore, we need a util to print tensors in a more
       // interpretable (e.g. size, dtype) and readable way.
       // TODO for the above at T159700776
-      std::strstream streamOut;
       for (size_t output_index = 0; output_index < method->outputs_size();
            output_index++) {
         auto output_tensor = outputs[output_index].toTensor();
@@ -283,9 +281,14 @@ int main(int argc, char** argv) {
         fout.write(
             output_tensor.const_data_ptr<char>(), output_tensor.nbytes());
         fout.close();
-        streamOut.write(
-            output_tensor.const_data_ptr<char>(), output_tensor.nbytes());
-        ET_LOG(Info, "Output[%zu], %s", output_index, streamOut.str());
+        ET_LOG(Info, "Output[%zu], numel = %zu", output_index, output_tensor.numel());
+        for (int i = 0; i < output_tensor.sizes().size() - 1; i++) {
+          ET_LOG(Info, "size[%d] = %zu,", i, output_tensor.sizes()[i]);
+        }
+        const float* resultPtr = static_cast<float*>(output_tensor.data_ptr());
+        for (int i = 0; i < output_tensor.numel() && i < 3; i++) {
+          ET_LOG(Info, "output[%d] = %f,", i, resultPtr[i]);
+        }
       }
 
       // Dump the profiling data to the specified file.

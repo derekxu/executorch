@@ -22,13 +22,12 @@ from executorch.examples.qualcomm.scripts.utils import (
 INPUT_LEN = len(INPUTS)
 
 
-def create_device_inputs(example_inputs, use_kv_cache):
+def create_device_inputs(example_inputs, use_kv_cache, filename):
     print(f"Length of example inputs: {len(example_inputs)}")
     for i,inp in enumerate(example_inputs):
         print(f"Input {i}: {inp.size()}")
     inputs = [inp.to(torch.int32) for inp in example_inputs]
     input_list = ""
-    filename = f"input_len_{INPUT_LEN}_0_0.raw"
     if use_kv_cache:
         for i, d in enumerate(inputs[0]):
             if type(d) == list:
@@ -65,6 +64,7 @@ if __name__ == "__main__":
         help="Whether or not to export a model using kv cache",
     )
 
+    # NOTE: use -P as default
     parser.add_argument(
         "-P",
         "--ptq",
@@ -93,13 +93,21 @@ if __name__ == "__main__":
     os.makedirs(args.artifact, exist_ok=True)
 
     instance = Llama2Model(use_kv_cache=args.use_kv_cache)
-    inputs, input_list = create_device_inputs(
-        instance.get_example_inputs(), args.use_kv_cache
-    )
-
-    pte_filename = f"{MODEL_NAME}_len_{INPUT_LEN}"
 
     use_fp16 = False if args.ptq else True
+
+    quant_mode = "fp16"
+    if not use_fp16:
+        quant_mode = "int8"
+
+    filename = f"input_len_{INPUT_LEN}_{quant_mode}_0_0.raw"
+
+    inputs, input_list = create_device_inputs(
+        instance.get_example_inputs(), args.use_kv_cache, filename
+    )
+
+    pte_filename = f"{MODEL_NAME}_len_{INPUT_LEN}_{quant_mode}"
+
     build_executorch_binary(
         instance.get_eager_model().eval(),
         inputs,
@@ -112,7 +120,7 @@ if __name__ == "__main__":
     for i,inp in enumerate(instance.get_example_inputs()):
         print(f"Input {i}: {inp.size()}")
     print(f"PTE: {args.artifact}/{pte_filename}.pte")
-    input_list_file = f"{args.artifact}/input_list_len_{INPUT_LEN}.txt"
+    input_list_file = f"{args.artifact}/input_list_len_{INPUT_LEN}_{quant_mode}.txt"
     with open(input_list_file, "w") as f:
         f.write(input_list)
         f.flush()

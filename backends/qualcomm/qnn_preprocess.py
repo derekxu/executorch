@@ -36,6 +36,7 @@ class QnnBackend(BackendDetails):
         edge_program: ExportedProgram,
         compile_specs: List[CompileSpec],
     ) -> PreprocessResult:
+        logger.info("START qnn preprocess()")
         option = generate_qnn_executorch_option(compile_specs)
         qnn_manager = PyQnnManager.QnnManager(option)
         qnn_manager.Init()
@@ -84,10 +85,19 @@ class QnnBackend(BackendDetails):
             else:
                 raise RuntimeError(f"{node.op} is not supported in Qnn")
 
-        qnn_context_binary = qnn_manager.Compile(
-            [py_op_wrapper.GetOpWrapper() for py_op_wrapper in py_op_wrapper_list]
-        )
+        logger.info("DONE visited ALL nodes, BEFORE get wrappers.")
+
+        wrappers = [py_op_wrapper.GetOpWrapper() for py_op_wrapper in py_op_wrapper_list]
+
+        logger.info("BEFORE generating QNN context binary.")
+
+        qnn_context_binary = qnn_manager.Compile(wrappers)
+        logger.info("AFTER generating QNN context binary.")
         assert len(qnn_context_binary) != 0, "Failed to generate Qnn context binary."
         qnn_manager.Destroy()
 
-        return PreprocessResult(bytes(qnn_context_binary))
+        logger.info("BEFORE instantiating the result.")
+        result = PreprocessResult(bytes(qnn_context_binary))
+
+        logger.info("BEFORE returning the result.")
+        return result

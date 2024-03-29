@@ -26,12 +26,16 @@ except ImportError:
 from ..model_base import EagerModelBase
 
 
-# MODEL_NAME = "dummy_400k"
-MODEL_NAME = "cria_1b4"
-# MODEL_NAME = "cria_0b5"
+BF16_LIST = ["cria_0b5", "cria_1b4", "llama_7b"]
 
-INPUTS = [1]
+# MODEL_NAME = "dummy_400k"
+MODEL_NAME = "cria_0b5"
+# MODEL_NAME = "cria_1b4"
+# MODEL_NAME = "llama_7b"
+
+# INPUTS = [1]
 # INPUTS = [1,2,3]
+INPUTS = [i for i in range(48)]
 
 
 class Llama2Model(EagerModelBase):
@@ -78,6 +82,8 @@ class Llama2Model(EagerModelBase):
         # The example is using a dummy small model with random weights for demo purpose only.
         # Follow the instruction in https://github.com/facebookresearch/llama to download the model
         device = "cpu"
+        # if MODEL_NAME == "llama_7b":
+        #   device = "meta"
         # flake8: noqa: TOR102
         checkpoint = torch.load(checkpoint_path, map_location=device, mmap=True)
         fairseq2_checkpoint = kwargs.get("fairseq2", False)
@@ -225,6 +231,8 @@ the checkpoint format to avoid generating faulty models.
         num_layers = 8
         if model_name == "cria_1b4":
             num_layers = 24
+        elif model_name == "llama_7b":
+            num_layers = 32
 
         for i in range(num_layers):
             output_ckpt[f"layers.{i}.attention.wq.weight"] = checkpoint[

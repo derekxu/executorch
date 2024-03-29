@@ -103,6 +103,7 @@ class QnnPartitioner(Partitioner):
         skip_node_id_set: set = None,
         skip_node_op_set: set = None,
     ):
+        print(f"QNN compiler_specs: {compiler_specs}")
         self.compiler_specs_snapshot = copy.deepcopy(compiler_specs)
 
         self.delegation_spec = DelegationSpec(

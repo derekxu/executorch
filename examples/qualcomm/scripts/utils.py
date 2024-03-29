@@ -149,6 +149,7 @@ def build_executorch_binary(
     skip_node_id_set=None,
     skip_node_op_set=None,
 ):
+    print(f"build_executorch_binary: use_fp16:{use_fp16}, use_16bit_quant: {use_16bit_quant}")
     if not use_fp16:
         quantizer = QnnQuantizer()
         quantizer.add_custom_quant_annotations(custom_annotations)
@@ -156,6 +157,7 @@ def build_executorch_binary(
             quantizer.add_16bit_quant_ops(quantizer.SUPPORTED_OPS)
             quantizer.set_bit16_op_quant_config(get_default_16bit_qnn_ptq_config())
         else:
+            print("use set_bit8_op_quant_config 8 bit quant")
             quantizer.set_bit8_op_quant_config(get_default_8bit_qnn_ptq_config())
 
         captured_model = torch._export.capture_pre_autograd_graph(model, inputs)
