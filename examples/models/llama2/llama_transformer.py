@@ -232,13 +232,14 @@ class Attention(nn.Module):
             # SDPA into a separate optimized attention module
             if self.use_sdpa_with_kv_cache_op:
                 from .custom_ops.sdpa_with_kv_cache import sdpa_with_kv_cache  # noqa
-
+                tmp_k = cache_k.to(torch.float32, copy=True)
+                tmp_v = cache_v.to(torch.float32, copy=True)
                 output = torch.ops.llama.sdpa_with_kv_cache(
                     xq,
                     xk,
                     xv,
-                    cache_k,
-                    cache_v,
+                    tmp_k,
+                    tmp_v,
                     self.layer_id,
                     start_pos,
                     seqlen,
@@ -270,6 +271,7 @@ class Attention(nn.Module):
 
         # make heads into a batch dimension
         xq = xq.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim)
+        # xq = xq.transpose(1, 2).to(torch.int)  # (bs, n_local_heads, seqlen, head_dim)
         keys = keys.transpose(1, 2)
         values = values.transpose(1, 2)
 
@@ -282,10 +284,21 @@ class Attention(nn.Module):
         # we make sure to specify the dimensions to be squeezed [0, 1] to ensure that the output
         # tensor will be 2-dimensional, regarldess of the values of l & s
         mask = torch.squeeze(mask, [0, 1])
+        # mask = torch.squeeze(mask, [0, 1]).to(torch.int)
 
+        tmp_k = keys.to(torch.float32, copy=True)
+        tmp_v = values.to(torch.float32, copy=True)
         output = F.scaled_dot_product_attention(
-            xq, keys, values, attn_mask=mask, dropout_p=0.0
+            xq, tmp_k, tmp_v, attn_mask=mask, dropout_p=0.0
         )
+
+        # output = F.scaled_dot_product_attention(
+        #     xq.to(torch.int, copy=True), keys, values, attn_mask=mask.to(torch.int, copy=True), dropout_p=0.0
+        # )
+
+        # output = F.scaled_dot_product_attention(
+        #     xq, keys.to(torch.float, copy=True), values.to(torch.float, copy=True), attn_mask=mask, dropout_p=0.0
+        # )
 
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
 

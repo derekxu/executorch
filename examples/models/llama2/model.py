@@ -158,7 +158,7 @@ the checkpoint format to avoid generating faulty models.
         for idx in iter(checkpoint):
             cur = checkpoint[idx]
             if cur.dtype == torch.float16:
-                checkpoint[idx] = checkpoint[idx].float()
+                checkpoint[idx] = checkpoint[idx].to(torch.float32)
 
         # get checkpoint dtype
         self.dtype = None
@@ -224,7 +224,7 @@ the checkpoint format to avoid generating faulty models.
 
     def convert_bfloat16_to_float(self, checkpoint, model_name):
         output_ckpt = OrderedDict()
-        output_ckpt["tok_embeddings.weight"] = checkpoint["tok_embeddings.weight"].float()
+        output_ckpt["tok_embeddings.weight"] = checkpoint["tok_embeddings.weight"].to(torch.float32)
         # layers
         # 0.5B -> 8 layers
         # 1.4B -> 24 layers
@@ -237,34 +237,34 @@ the checkpoint format to avoid generating faulty models.
         for i in range(num_layers):
             output_ckpt[f"layers.{i}.attention.wq.weight"] = checkpoint[
                 f"layers.{i}.attention.wq.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.attention.wk.weight"] = checkpoint[
                 f"layers.{i}.attention.wk.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.attention.wv.weight"] = checkpoint[
                 f"layers.{i}.attention.wv.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.attention.wo.weight"] = checkpoint[
                 f"layers.{i}.attention.wo.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.feed_forward.w1.weight"] = checkpoint[
                 f"layers.{i}.feed_forward.w1.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.feed_forward.w2.weight"] = checkpoint[
                 f"layers.{i}.feed_forward.w2.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.feed_forward.w3.weight"] = checkpoint[
                 f"layers.{i}.feed_forward.w3.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.attention_norm.weight"] = checkpoint[
                 f"layers.{i}.attention_norm.weight"
-            ].float()
+            ].to(torch.float32)
             output_ckpt[f"layers.{i}.ffn_norm.weight"] = checkpoint[
                 f"layers.{i}.ffn_norm.weight"
-            ].float()
+            ].to(torch.float32)
 
-        output_ckpt["norm.weight"] = checkpoint["norm.weight"].float()
-        output_ckpt["output.weight"] = checkpoint["output.weight"].float()
+        output_ckpt["norm.weight"] = checkpoint["norm.weight"].to(torch.float32)
+        output_ckpt["output.weight"] = checkpoint["output.weight"].to(torch.float32)
         return output_ckpt
 
 

@@ -18,6 +18,7 @@ from executorch.examples.qualcomm.scripts.utils import (
     setup_common_args_and_variables,
     SimpleADB,
 )
+from torch.nn.attention import SDPBackend
 
 INPUT_LEN = len(INPUTS)
 
@@ -92,6 +93,8 @@ if __name__ == "__main__":
     # ensure the working directory exist.
     os.makedirs(args.artifact, exist_ok=True)
 
+    print("BEFORE instance Llama2Model")
+    # instance = Llama2Model(use_kv_cache=args.use_kv_cache, use_sdpa_with_kv_cache=True)
     instance = Llama2Model(use_kv_cache=args.use_kv_cache)
 
     use_fp16 = False if args.ptq else True
@@ -108,15 +111,26 @@ if __name__ == "__main__":
 
     pte_filename = f"{MODEL_NAME}_len_{INPUT_LEN}_{quant_mode}"
 
-    build_executorch_binary(
-        instance.get_eager_model().eval(),
-        inputs,
-        args.model,
-        f"{args.artifact}/{pte_filename}",
-        inputs,
-        custom_annotations=(),
-        use_fp16=use_fp16,
-    )
+    # build_executorch_binary(
+    #     instance.get_eager_model().eval(),
+    #     inputs,
+    #     args.model,
+    #     f"{args.artifact}/{pte_filename}",
+    #     inputs,
+    #     custom_annotations=(),
+    #     use_fp16=use_fp16,
+    # )
+    print("BEFORE build_executorch_binary")
+    with torch.nn.attention.sdpa_kernel([SDPBackend.MATH]), torch.no_grad():
+        build_executorch_binary(
+            instance.get_eager_model().eval(),
+            inputs,
+            args.model,
+            f"{args.artifact}/{pte_filename}",
+            inputs,
+            custom_annotations=(),
+            use_fp16=use_fp16,
+        )
     for i,inp in enumerate(instance.get_example_inputs()):
         print(f"Input {i}: {inp.size()}")
     print(f"PTE: {args.artifact}/{pte_filename}.pte")

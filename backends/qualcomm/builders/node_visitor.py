@@ -194,7 +194,7 @@ class NodeVisitor:
         if tensor.dtype == torch.bfloat16:
             # import pdb; pdb.set_trace()
             print(f"tensor dtype==bfloat16 {tensor}")
-            tensor.float()
+            tensor.to(torch.float32)
         if quant_config and is_tensor:
             quant_range = quant_config["quant_max"] - quant_config["quant_min"]
             unsigned = quant_config["quant_min"] >= 0

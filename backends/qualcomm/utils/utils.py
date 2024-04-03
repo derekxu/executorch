@@ -85,6 +85,12 @@ def canonicalize_program(prog: ExportedProgram):
             )
 
 
+def draw_graph(title, path, graph_module: torch.fx.GraphModule):
+    graph = passes.graph_drawer.FxGraphDrawer(graph_module, title)
+    with open(f"{path}/{title}.svg", "wb") as f:
+        print(f"Saving graph to {path}/{title}.svg")
+        f.write(graph.get_dot_graph().create_svg())
+
 def capture_program(
     module: torch.nn.Module,
     inputs: Tuple[torch.Tensor],
@@ -120,13 +126,9 @@ def capture_program(
     FoldQDQ()(graph_module)
     InsertRequantize(edge_program)(graph_module)
     LayoutTransform(edge_program)(graph_module)
+    print("BEFORE drawing graph")
+    # draw_graph("cria_graph", "/tmp", graph_module)
     return ex_prog
-
-
-def draw_graph(title, path, graph_module: torch.fx.GraphModule):
-    graph = passes.graph_drawer.FxGraphDrawer(graph_module, title)
-    with open(f"{path}/{title}.svg", "wb") as f:
-        f.write(graph.get_dot_graph().create_svg())
 
 
 def generate_qnn_executorch_option(
