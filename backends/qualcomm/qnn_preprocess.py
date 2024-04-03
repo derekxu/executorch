@@ -81,6 +81,8 @@ class QnnBackend(BackendDetails):
                 "placeholder",
                 "output",
             ]:
+                # if node.op == "output":
+                #     import pdb; pdb.set_trace()
                 continue
             else:
                 raise RuntimeError(f"{node.op} is not supported in Qnn")

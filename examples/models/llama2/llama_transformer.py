@@ -223,7 +223,9 @@ class Attention(nn.Module):
         # RoPE relative positional embeddings
         xq, xk = apply_rotary_emb(xq, xk, freqs_cos, freqs_sin)
 
+        print("Attention block, use_kv_cache: {self.use_kv_cache}")
         if self.use_kv_cache:
+            print("using kv cache")
             assert start_pos is not None
             assert cache_k is not None and cache_v is not None
 
@@ -262,6 +264,8 @@ class Attention(nn.Module):
                 keys = cache_k[:bsz].narrow(1, 0, start_pos + seqlen)
                 values = cache_v[:bsz].narrow(1, 0, start_pos + seqlen)
         else:
+            print("NOT using kv cache")
+            # assert False == True, "attention non kv cache called"
             keys = xk
             values = xv
 

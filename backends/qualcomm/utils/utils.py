@@ -126,7 +126,7 @@ def capture_program(
     FoldQDQ()(graph_module)
     InsertRequantize(edge_program)(graph_module)
     LayoutTransform(edge_program)(graph_module)
-    print("BEFORE drawing graph")
+    # print("BEFORE drawing graph")
     # draw_graph("cria_graph", "/tmp", graph_module)
     return ex_prog
 

@@ -121,7 +121,18 @@ if __name__ == "__main__":
     #     use_fp16=use_fp16,
     # )
     print("BEFORE build_executorch_binary")
-    with torch.nn.attention.sdpa_kernel([SDPBackend.MATH]), torch.no_grad():
+    if args.use_kv_cache:
+        with torch.nn.attention.sdpa_kernel([SDPBackend.MATH]), torch.no_grad():
+            build_executorch_binary(
+                instance.get_eager_model().eval(),
+                inputs,
+                args.model,
+                f"{args.artifact}/{pte_filename}",
+                inputs,
+                custom_annotations=(),
+                use_fp16=use_fp16,
+            )
+    else:
         build_executorch_binary(
             instance.get_eager_model().eval(),
             inputs,
@@ -131,6 +142,7 @@ if __name__ == "__main__":
             custom_annotations=(),
             use_fp16=use_fp16,
         )
+
     for i,inp in enumerate(instance.get_example_inputs()):
         print(f"Input {i}: {inp.size()}")
     print(f"PTE: {args.artifact}/{pte_filename}.pte")
@@ -138,8 +150,10 @@ if __name__ == "__main__":
     with open(input_list_file, "w") as f:
         f.write(input_list)
         f.flush()
-    print(f"input_list: {input_list}")
+    print(f"input_list: {args.artifact}/{input_list}")
     print(f"input_list file: {input_list_file}")
+    # for inp in inputs[0]:
+    #     print(f"input file: {args.artifact}/{inp}")
     # adb = SimpleADB(
     #     qnn_sdk=os.getenv("QNN_SDK_ROOT"),
     #     artifact_path=f"{args.build_folder}",

@@ -24,6 +24,7 @@ from executorch.backends.qualcomm.serialization.qnn_compile_spec_schema import (
 )
 from executorch.backends.qualcomm.utils.utils import (
     capture_program,
+    draw_graph,
     generate_htp_compiler_spec,
     generate_qnn_executorch_compiler_spec,
 )
@@ -191,7 +192,12 @@ def build_executorch_binary(
         skip_node_op_set,
     )
     edge_prog.exported_program = to_backend(edge_prog.exported_program, qnn_partitioner)
+    print("BEFORE print_tabular")
     edge_prog.exported_program.graph_module.graph.print_tabular()
+    print("BEFORE drawing graph")
+    draw_graph("cria_graph", "/tmp", edge_prog.exported_program.graph_module)
+    for n in edge_prog.exported_program.graph_module.graph.nodes:
+        print(f"opcode={n.op}, name={n.name}, target={n.target}, args={n.args}, kwargs={n.kwargs}")
     print("BEFORE to_executorch")
     # import pdb; pdb.set_trace()
     exec_prog = edge_prog.to_executorch(

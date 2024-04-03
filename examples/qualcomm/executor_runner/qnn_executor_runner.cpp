@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
 
       ET_LOG(
           Info,
-          "%d inference took %f ms, avg %f ms",
+          "%d inference iteration took %f ms, avg %f ms",
           FLAGS_iteration,
           interval_infs,
           interval_infs / (float)FLAGS_iteration);

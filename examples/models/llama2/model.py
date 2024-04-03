@@ -29,13 +29,14 @@ from ..model_base import EagerModelBase
 BF16_LIST = ["cria_0b5", "cria_1b4", "llama_7b"]
 
 # MODEL_NAME = "dummy_400k"
-MODEL_NAME = "cria_0b5"
-# MODEL_NAME = "cria_1b4"
+# MODEL_NAME = "cria_0b5"
+MODEL_NAME = "cria_1b4"
 # MODEL_NAME = "llama_7b"
 
 # INPUTS = [1]
 # INPUTS = [1,2,3]
-INPUTS = [i for i in range(48)]
+INPUTS = [i for i in range(1, 256)]
+INPUTS[0] = INPUTS[len(INPUTS)-1]
 
 
 class Llama2Model(EagerModelBase):
@@ -176,15 +177,24 @@ the checkpoint format to avoid generating faulty models.
                 )
         with open(params_path, "r") as f:
             params = json.loads(f.read())
-        max_seq_len = 128
+        max_seq_len = 1024
         max_batch_size = 1
         model_args: ModelArgs = ModelArgs(
             max_seq_len=max_seq_len,
             max_batch_size=max_batch_size,
             use_kv_cache=self.use_kv_cache,
             use_sdpa_with_kv_cache_op=self.use_sdpa_with_kv_cache_op,
+            eos_idx = len(INPUTS),
             **params,
         )
+        model_parallel_size = 1
+        n_kv_heads = model_args.n_heads if model_args.n_kv_heads is None else model_args.n_kv_heads
+        n_local_heads = model_args.n_heads // model_parallel_size
+        n_local_kv_heads = n_kv_heads // model_parallel_size
+        n_rep = n_local_heads // n_local_kv_heads
+
+        print(f"DX bos idx: {model_args.bos_idx}, eos idx: {model_args.eos_idx}; n_rep = {n_rep}")
+        print(f"DX n_heads: {model_args.n_heads}, n_kv_heads: {model_args.n_kv_heads}")
         if kwargs.get("fairseq2", False):
             print("Using fairseq2 checkpoint")
             checkpoint = convert_to_llama_checkpoint(checkpoint=checkpoint)
