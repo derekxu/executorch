@@ -26,11 +26,11 @@ except ImportError:
 from ..model_base import EagerModelBase
 
 
-BF16_LIST = ["cria_0b5", "cria_1b4", "llama_7b"]
+BF16_LIST = ["odllm_0b5", "odllm_1b4", "llama_7b"]
 
 # MODEL_NAME = "dummy_400k"
-# MODEL_NAME = "cria_0b5"
-MODEL_NAME = "cria_1b4"
+MODEL_NAME = "odllm_0b5"
+# MODEL_NAME = "odllm_1b4"
 # MODEL_NAME = "llama_7b"
 
 # INPUTS = [1]
@@ -119,7 +119,7 @@ the checkpoint format to avoid generating faulty models.
         # # 0.5B -> 8 layers
         # # 1.4B -> 24 layers
         # num_layers = 8
-        # if MODEL_NAME == "cria_1b4":
+        # if MODEL_NAME == "odllm_1b4":
         #     num_layers = 24
 
         # for i in range(num_layers):
@@ -239,7 +239,7 @@ the checkpoint format to avoid generating faulty models.
         # 0.5B -> 8 layers
         # 1.4B -> 24 layers
         num_layers = 8
-        if model_name == "cria_1b4":
+        if model_name == "odllm_1b4":
             num_layers = 24
         elif model_name == "llama_7b":
             num_layers = 32
