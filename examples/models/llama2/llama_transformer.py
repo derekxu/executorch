@@ -15,6 +15,8 @@ import torch.nn.functional as F
 
 from torch import nn
 
+SLICE_MODEL = True
+
 
 class RMSNorm(torch.nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
@@ -487,6 +489,9 @@ class Transformer(nn.Module):
             freqs_cos = self.freqs_cos[:seqlen]
             freqs_sin = self.freqs_sin[:seqlen]
 
+        sliced_layer = self.n_layers
+        if SLICE_MODEL:
+            sliced_layer = self.n_layers // 4
         for index, layer in enumerate(self.layers):
             if self.use_kv_cache:
                 if self.params.use_sdpa_with_kv_cache_op:
@@ -512,6 +517,8 @@ class Transformer(nn.Module):
 
             else:
                 h, _, _ = layer(h, freqs_cos, freqs_sin)
+            if index > sliced_layer:
+                break
 
         h = self.norm(h)
 

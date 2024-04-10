@@ -28,14 +28,17 @@ from ..model_base import EagerModelBase
 
 BF16_LIST = ["odllm_0b5", "odllm_1b4", "llama_7b"]
 
+# TODO: break up the graphs in qnn_preprocess.py
+
 # MODEL_NAME = "dummy_400k"
-MODEL_NAME = "odllm_0b5"
+# MODEL_NAME = "odllm_0b5"
 # MODEL_NAME = "odllm_1b4"
-# MODEL_NAME = "llama_7b"
+MODEL_NAME = "llama_7b"
 
 # INPUTS = [1]
 # INPUTS = [1,2,3]
-INPUTS = [i for i in range(1, 256)]
+INPUT_LEN = 48
+INPUTS = [i for i in range(1, INPUT_LEN)]
 INPUTS[0] = INPUTS[len(INPUTS)-1]
 
 

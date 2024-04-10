@@ -36,6 +36,7 @@ class QnnBackend(BackendDetails):
         edge_program: ExportedProgram,
         compile_specs: List[CompileSpec],
     ) -> PreprocessResult:
+        # assert False == True
         logger.info("START qnn preprocess()")
         option = generate_qnn_executorch_option(compile_specs)
         qnn_manager = PyQnnManager.QnnManager(option)
