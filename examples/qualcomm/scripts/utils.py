@@ -150,6 +150,8 @@ def build_executorch_binary(
     skip_node_id_set=None,
     skip_node_op_set=None,
 ):
+    # model: torch.nn.Module
+    # import pdb; pdb.set_trace()
     print(f"build_executorch_binary: use_fp16:{use_fp16}, use_16bit_quant: {use_16bit_quant}")
     if not use_fp16:
         quantizer = QnnQuantizer()
@@ -191,11 +193,13 @@ def build_executorch_binary(
         skip_node_id_set,
         skip_node_op_set,
     )
+    print("BEFORE drawing orig graph")
+    draw_graph("llm_orig_graph", "/tmp", edge_prog.exported_program.graph_module)
     edge_prog.exported_program = to_backend(edge_prog.exported_program, qnn_partitioner)
     print("BEFORE print_tabular")
     edge_prog.exported_program.graph_module.graph.print_tabular()
     print("BEFORE drawing graph")
-    draw_graph("cria_graph", "/tmp", edge_prog.exported_program.graph_module)
+    draw_graph("llm_lowered_graph", "/tmp", edge_prog.exported_program.graph_module)
     for n in edge_prog.exported_program.graph_module.graph.nodes:
         print(f"opcode={n.op}, name={n.name}, target={n.target}, args={n.args}, kwargs={n.kwargs}")
     print("BEFORE to_executorch")

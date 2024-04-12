@@ -288,6 +288,7 @@ def _partition_and_lower(
     Partitions the graph module into submodules based on tags, and then lowered the nodes with the same tag as one lowered module, including the submodule from control flow
     """
 
+    # Try tag moduels
     partitioned_module = _partition_and_lower_one_graph_module(
         tagged_graph_module, partition_result, owning_program
     )

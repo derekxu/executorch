@@ -28,12 +28,14 @@ from ..model_base import EagerModelBase
 
 BF16_LIST = ["odllm_0b5", "odllm_1b4", "llama_7b"]
 
+LAYER_TO_REMOVE = -1
+
 # TODO: break up the graphs in qnn_preprocess.py
 
 # MODEL_NAME = "dummy_400k"
-# MODEL_NAME = "odllm_0b5"
+MODEL_NAME = "odllm_0b5"
 # MODEL_NAME = "odllm_1b4"
-MODEL_NAME = "llama_7b"
+# MODEL_NAME = "llama_7b"
 
 # INPUTS = [1]
 # INPUTS = [1,2,3]
@@ -275,6 +277,18 @@ the checkpoint format to avoid generating faulty models.
             output_ckpt[f"layers.{i}.ffn_norm.weight"] = checkpoint[
                 f"layers.{i}.ffn_norm.weight"
             ].to(torch.float32)
+
+        if LAYER_TO_REMOVE > 0:
+            for i in range(LAYER_TO_REMOVE, num_layers):
+                del output_ckpt[f"layers.{i}.attention.wq.weight"]
+                del output_ckpt[f"layers.{i}.attention.wk.weight"]
+                del output_ckpt[f"layers.{i}.attention.wv.weight"]
+                del output_ckpt[f"layers.{i}.attention.wo.weight"]
+                del output_ckpt[f"layers.{i}.feed_forward.w1.weight"]
+                del output_ckpt[f"layers.{i}.feed_forward.w2.weight"]
+                del output_ckpt[f"layers.{i}.feed_forward.w3.weight"]
+                del output_ckpt[f"layers.{i}.attention_norm.weight"]
+                del output_ckpt[f"layers.{i}.ffn_norm.weight"]
 
         output_ckpt["norm.weight"] = checkpoint["norm.weight"].to(torch.float32)
         output_ckpt["output.weight"] = checkpoint["output.weight"].to(torch.float32)

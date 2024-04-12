@@ -227,6 +227,7 @@ class NodeVisitor:
         is_fake_tensor: bool,
         nodes_to_wrappers: Dict[str, PyQnnWrapper.TensorWrapper],
     ) -> PyQnnWrapper.TensorWrapper:
+        print(f"Visiting node: {node_name}")
         if node_name in nodes_to_wrappers:
             return nodes_to_wrappers[node_name]
         if is_fake_tensor:

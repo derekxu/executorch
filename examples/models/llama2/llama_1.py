@@ -16,13 +16,12 @@ import torch.nn.functional as F
 from torch import nn
 
 SLICE_MODEL = False
-LLAMA_1_LAYER = 4
 
 
-class RMSNorm(torch.nn.Module):
+class RMSNorm1(torch.nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         """
-        Initialize the RMSNorm normalization layer.
+        Initialize the RMSNorm1 normalization layer.
 
         Args:
             dim (int): The dimension of the input tensor.
@@ -39,7 +38,7 @@ class RMSNorm(torch.nn.Module):
 
     def _norm(self, x):
         """
-        Apply the RMSNorm normalization to the input tensor.
+        Apply the RMSNorm1 normalization to the input tensor.
 
         Args:
             x (torch.Tensor): The input tensor.
@@ -52,13 +51,13 @@ class RMSNorm(torch.nn.Module):
 
     def forward(self, x):
         """
-        Forward pass through the RMSNorm layer.
+        Forward pass through the RMSNorm1 layer.
 
         Args:
             x (torch.Tensor): The input tensor.
 
         Returns:
-            torch.Tensor: The output tensor after applying RMSNorm.
+            torch.Tensor: The output tensor after applying RMSNorm1.
 
         """
         output = self._norm(x.float()).type_as(x)
@@ -151,7 +150,7 @@ def apply_rotary_emb(
     return xq_out.type_as(xq), xk_out.type_as(xk)
 
 
-class Attention(nn.Module):
+class Attention1(nn.Module):
     def __init__(self, args: ModelArgs, layer_id: int):
         super().__init__()
         self.use_kv_cache = args.use_kv_cache
@@ -226,7 +225,7 @@ class Attention(nn.Module):
         # RoPE relative positional embeddings
         xq, xk = apply_rotary_emb(xq, xk, freqs_cos, freqs_sin)
 
-        print("Attention block, use_kv_cache: {self.use_kv_cache}")
+        print("Attention1 block, use_kv_cache: {self.use_kv_cache}")
         if self.use_kv_cache:
             print("using kv cache")
             assert start_pos is not None
@@ -234,7 +233,7 @@ class Attention(nn.Module):
 
             # TODO(T180671810)
             # Refactor this code to make custom op based
-            # SDPA into a separate optimized attention module
+            # SDPA into a separate optimized Attention1 module
             if self.use_sdpa_with_kv_cache_op:
                 from .custom_ops.sdpa_with_kv_cache import sdpa_with_kv_cache  # noqa
                 tmp_k = cache_k.to(torch.float32, copy=True)
@@ -268,11 +267,11 @@ class Attention(nn.Module):
                 values = cache_v[:bsz].narrow(1, 0, start_pos + seqlen)
         else:
             print("NOT using kv cache")
-            # assert False == True, "attention non kv cache called"
+            # assert False == True, "Attention1 non kv cache called"
             keys = xk
             values = xv
 
-        # grouped multiquery attention: expand out keys and values
+        # grouped multiquery Attention1: expand out keys and values
         keys = repeat_kv(keys, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
         values = repeat_kv(values, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
 
@@ -295,15 +294,15 @@ class Attention(nn.Module):
 
         tmp_k = keys.to(torch.float32, copy=True)
         tmp_v = values.to(torch.float32, copy=True)
-        output = F.scaled_dot_product_attention(
+        output = F.scaled_dot_product_Attention1(
             xq, tmp_k, tmp_v, attn_mask=mask, dropout_p=0.0
         )
 
-        # output = F.scaled_dot_product_attention(
+        # output = F.scaled_dot_product_Attention1(
         #     xq.to(torch.int, copy=True), keys, values, attn_mask=mask.to(torch.int, copy=True), dropout_p=0.0
         # )
 
-        # output = F.scaled_dot_product_attention(
+        # output = F.scaled_dot_product_Attention1(
         #     xq, keys.to(torch.float, copy=True), values.to(torch.float, copy=True), attn_mask=mask, dropout_p=0.0
         # )
 
@@ -317,7 +316,7 @@ class Attention(nn.Module):
             return output, None, None
 
 
-class FeedForward(nn.Module):
+class FeedForward1(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         dim = args.dim
@@ -338,7 +337,7 @@ class FeedForward(nn.Module):
         return self.w2(F.silu(self.w1(x)) * self.w3(x))
 
 
-class ConditionalFeedForward(nn.Module):
+class ConditionalFeedForward11(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         self.dim = args.dim
@@ -366,11 +365,11 @@ class ConditionalFeedForward(nn.Module):
         return expert_outs
 
 
-class MOEFeedForward(nn.Module):
+class MOEFeedForward11(nn.Module):
     def __init__(self, config) -> None:
         super().__init__()
         self.gate = nn.Linear(config.dim, config.num_experts, bias=False)
-        self.cond_ffn = ConditionalFeedForward(config)
+        self.cond_ffn = ConditionalFeedForward11(config)
         self.dim = config.dim
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -384,40 +383,6 @@ class MOEFeedForward(nn.Module):
         return torch.einsum("tai,ta -> ti", expert_outs, expert_weights)
 
 
-class TransformerBlock(nn.Module):
-    def __init__(self, layer_id: int, args: ModelArgs):
-        super().__init__()
-        self.use_kv_cache = args.use_kv_cache
-        self.n_heads = args.n_heads
-        self.dim = args.dim
-        self.head_dim = args.dim // args.n_heads
-        self.attention = Attention(args, layer_id)
-        if args.moe:
-            self.block_sparse_moe = MOEFeedForward(args)
-        else:
-            self.feed_forward = FeedForward(args)
-        self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
-        self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
-
-    def forward(
-        self, x, freqs_cos, freqs_sin, start_pos=None, cache_k=None, cache_v=None
-    ):  # x: 1xN
-        h, cache_k, cache_v = self.attention.forward(
-            self.attention_norm(x),
-            freqs_cos,
-            freqs_sin,
-            start_pos,
-            cache_k,
-            cache_v,
-        )
-
-        h = x + h
-        if hasattr(self, "block_sparse_moe"):
-            out = h + self.block_sparse_moe(self.ffn_norm(h))
-        else:
-            out = h + self.feed_forward(self.ffn_norm(h))
-        return out, cache_k, cache_v
-
 class TransformerBlock1(nn.Module):
     def __init__(self, layer_id: int, args: ModelArgs):
         super().__init__()
@@ -425,19 +390,19 @@ class TransformerBlock1(nn.Module):
         self.n_heads = args.n_heads
         self.dim = args.dim
         self.head_dim = args.dim // args.n_heads
-        self.attention = Attention(args, layer_id)
+        self.Attention1 = Attention1(args, layer_id)
         if args.moe:
-            self.block_sparse_moe = MOEFeedForward(args)
+            self.block_sparse_moe = MOEFeedForward11(args)
         else:
-            self.feed_forward = FeedForward(args)
-        self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
-        self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
+            self.feed_forward = FeedForward1(args)
+        self.Attention1_norm = RMSNorm1(args.dim, eps=args.norm_eps)
+        self.ffn_norm = RMSNorm1(args.dim, eps=args.norm_eps)
 
     def forward(
         self, x, freqs_cos, freqs_sin, start_pos=None, cache_k=None, cache_v=None
     ):  # x: 1xN
-        h, cache_k, cache_v = self.attention.forward(
-            self.attention_norm(x),
+        h, cache_k, cache_v = self.Attention1.forward(
+            self.Attention1_norm(x),
             freqs_cos,
             freqs_sin,
             start_pos,
@@ -451,168 +416,3 @@ class TransformerBlock1(nn.Module):
         else:
             out = h + self.feed_forward(self.ffn_norm(h))
         return out, cache_k, cache_v
-
-class RMSNorm1(torch.nn.Module):
-    def __init__(self, dim: int, eps: float = 1e-6):
-        """
-        Initialize the RMSNorm normalization layer.
-
-        Args:
-            dim (int): The dimension of the input tensor.
-            eps (float, optional): A small value added to the denominator for numerical stability. Default is 1e-6.
-
-        Attributes:
-            eps (float): A small value added to the denominator for numerical stability.
-            weight (nn.Parameter): Learnable scaling parameter.
-
-        """
-        super().__init__()
-        self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
-
-    def _norm(self, x):
-        """
-        Apply the RMSNorm normalization to the input tensor.
-
-        Args:
-            x (torch.Tensor): The input tensor.
-
-        Returns:
-            torch.Tensor: The normalized tensor.
-
-        """
-        return x * torch.rsqrt((x * x).mean(-1, keepdim=True) + self.eps)
-
-    def forward(self, x):
-        """
-        Forward pass through the RMSNorm layer.
-
-        Args:
-            x (torch.Tensor): The input tensor.
-
-        Returns:
-            torch.Tensor: The output tensor after applying RMSNorm.
-
-        """
-        output = self._norm(x.float()).type_as(x)
-        return output * self.weight
-
-class Transformer(nn.Module):
-    def __init__(self, params: ModelArgs):
-        super().__init__()
-        self.params = params
-        self.vocab_size = params.vocab_size
-        self.n_layers = params.n_layers
-
-        self.tok_embeddings = nn.Embedding(params.vocab_size, params.dim)
-        self.layers = torch.nn.ModuleList()
-        for layer_id in range(params.n_layers):
-            self.layers.append(TransformerBlock(layer_id, params))
-            # if layer_id > LLAMA_1_LAYER:
-            #     self.layers.append(TransformerBlock1(layer_id, params))
-            # else:
-            #     self.layers.append(TransformerBlock(layer_id, params))
-        self.norm = RMSNorm(params.dim, eps=params.norm_eps)
-        self.output = nn.Linear(params.dim, params.vocab_size, bias=False)
-        self.use_kv_cache = params.use_kv_cache
-
-        freqs_cos, freqs_sin = precompute_freqs_cis(
-            params.dim // params.n_heads,
-            params.max_seq_len,
-            params.rope_freq_base,
-        )
-        self.register_buffer("freqs_cos", freqs_cos, persistent=False)
-        self.register_buffer("freqs_sin", freqs_sin, persistent=False)
-
-    def forward(
-        self,
-        tokens: torch.Tensor,
-        start_pos: Optional[
-            torch.Tensor
-        ] = None,  # Scalar tensor indicating size of window of the caches
-        cache_k: Optional[
-            torch.Tensor
-        ] = None,  # n_layers long, it should be a list of tensors to accommodate the potential size difference among attention layers. The current implementation is overly simplified.
-        cache_v: Optional[torch.Tensor] = None,  # n_layers long
-    ) -> Union[
-        torch.Tensor, Tuple[torch.Tensor, List[torch.Tensor], List[torch.Tensor]]
-    ]:
-        _bsz, seqlen = tokens.shape
-        h = self.tok_embeddings(tokens)
-
-        if self.use_kv_cache:
-            assert (
-                cache_k is not None and cache_v is not None and start_pos is not None
-            ), "Caches and start_pos must be provided when use_kv_cache is True"
-            assert (
-                cache_k.size(0) == self.n_layers
-            ), f"{cache_k.size(0)} != {self.n_layers}"
-            assert (
-                cache_v.size(0) == self.n_layers
-            ), f"{cache_v.size(0)} != {self.n_layers}"
-
-            sp = start_pos.item()
-            # self.params.max_seq_len - 1 because of 0 based indexing, and - 1 again because our input seq len is 1 and its added to the cache before accessing the cache
-            torch._constrain_as_size(sp, min=0, max=self.params.max_seq_len - 2)
-            torch._constrain_as_value(
-                cache_k.shape[0],
-                max=self.n_layers,
-                min=self.n_layers,
-            )
-            torch._constrain_as_value(
-                cache_v.shape[0], min=self.n_layers, max=self.n_layers
-            )
-            # when KV cache is used, seqlen is most likely 1. We want to slice from the start_pos.
-            freqs_cos = self.freqs_cos[sp : sp + seqlen]
-            freqs_sin = self.freqs_sin[sp : sp + seqlen]
-        else:
-            # assert (
-            #     start_pos is None and cache_k is None and cache_v is None
-            # ), "Caches and start_pos are unused when use_kv_cache is False"
-            freqs_cos = self.freqs_cos[:seqlen]
-            freqs_sin = self.freqs_sin[:seqlen]
-
-        # sliced_layer = self.n_layers
-        # if SLICE_MODEL:
-        #     sliced_layer = self.n_layers // 4
-        for index, layer in enumerate(self.layers):
-            if self.use_kv_cache:
-                if self.params.use_sdpa_with_kv_cache_op:
-                    h, updated_cache_k, updated_cache_v = layer(
-                        h,
-                        freqs_cos,
-                        freqs_sin,
-                        sp,  # pyre-ignore[61]
-                        cache_k,
-                        cache_v,
-                    )
-                else:
-                    h, updated_cache_k, updated_cache_v = layer(
-                        h,
-                        freqs_cos,
-                        freqs_sin,
-                        sp,  # pyre-ignore[61]
-                        cache_k[index],  # pyre-ignore[16]
-                        cache_v[index],
-                    )
-                    cache_k[index] = updated_cache_k  # pyre-ignore[16]
-                    cache_v[index] = updated_cache_v
-
-            else:
-                h, _, _ = layer(h, freqs_cos, freqs_sin)
-            # if index > sliced_layer:
-            #     break
-
-        h = self.norm(h)
-
-        logits = self.output(h)
-        if self.use_kv_cache:
-            return (logits, cache_k, cache_v)  # pyre-ignore
-        else:
-            # 'None' is not a valid return for export so have to split the return into if else
-            return logits
-
-    # For each layer return the sizes of the needed caches
-    def get_cache_sizes(self):
-        # cache_k and cache_v have the same shape so could pick either here.
-        return [self.n_layers, *self.layers[0].attention.kv_cache_sizes]
