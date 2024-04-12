@@ -24,6 +24,8 @@ from torch.fx.passes.utils.fuser_utils import fuse_by_partitions
 # ) -> List[Partition]:
 #     return []
 
+TOTAL_NUM_NODES = 819
+
 class _DependencyViewer:
     def __init__(self, graph_module: GraphModule):
         self.upstreams = collections.defaultdict(set)
@@ -73,7 +75,11 @@ class CapabilityPartitioner:
         )
 
     def propose_partitions(self) -> List[Partition]:
+        """
+        Propose partition by merging each new node into the existing partition.
+        """
         print("DX propose_partitions")
+
         # partition_map is a mapping from partition id to a set of partition id's.
         # The value set contains all the partition ids that can be reached by doing a
         # DFS starting from the partition id in the key.
@@ -89,6 +95,15 @@ class CapabilityPartitioner:
         # returns `True` when merge happens, `False` otherwise.
         def maybe_merge_partition(self_id: int, other_id: int):
             print(f"DX maybe_merge_partition self_id: {self_id}, other_id: {other_id}")
+            # Stop merging at last partition
+            self_num_nodes = len(partitions_by_id[self_id].nodes)
+            others_num_nodes = len(partitions_by_id[other_id].nodes)
+            # total_num_nodes = len(self.graph_module.graph.nodes)
+            total_num_nodes = TOTAL_NUM_NODES
+            if self_num_nodes + others_num_nodes == total_num_nodes:
+                print(f"DX: last 2 partitions, stop merging self_num_nodes={self_num_nodes}, others_num_nodes={others_num_nodes}, total_num_nodes={total_num_nodes}")
+                return False
+            print(f"DX: self_num_nodes={self_num_nodes}, others_num_nodes={others_num_nodes}, total_num_nodes={total_num_nodes}")
             # merged_nodes is the union of nodes in two partition to-be-merged
             merged_nodes = copy(partitions_by_id[self_id].nodes)
             merged_nodes.update(partitions_by_id[other_id].nodes)
@@ -196,6 +211,7 @@ class CapabilityPartitioner:
             # I don't see a need to add a knob to disable horizontal fusion yet, we can short-cut
             # the fusion by adding an `else` block here to skip horizontal fusion.
             if self.__is_node_supported(node) and node not in assignment:
+                print("DX calling merge_single_node")
                 partition_id = next(new_partition_id)
                 merge_single_node(node, partition_id)
                 merge_candidates[partition_id] = None
@@ -204,6 +220,7 @@ class CapabilityPartitioner:
             for node in assignment:
                 merge_candidates[assignment[node]] = None
 
+            # TODO: move the finished partition out of the merge_candidates @nocommit
             merge_candidates_list = list(merge_candidates.keys())
             if len(merge_candidates_list) > 1:
                 self_id = merge_candidates_list[0]
@@ -393,8 +410,8 @@ def generate_partitions_from_list_of_nodes(
     for partition in partition_list:
         for node in partition.nodes:
             # print(node.meta['nn_module_stack'].keys())
-            # stack_str = ",".join(node.meta['nn_module_stack'].keys())
-            # print(f"Node: [{node.name}], nn_module_stack: {stack_str}")
+            stack_str = ",".join(node.meta['nn_module_stack'].keys())
+            print(f"Node: [{node.name}], nn_module_stack: {stack_str}")
             # print(f"Node: [{node.name}], stack_trace: [{node.meta['stack_trace']}], nn_module_stack: {stack_str}")
             # if f"{nn_module_stack_key_prefix}7" in node.meta['nn_module_stack'].keys():
             #     print("FOUND node in layer 7")
@@ -402,7 +419,7 @@ def generate_partitions_from_list_of_nodes(
             node.meta.pop("match", False)
 
     for partition in partition_list:
-        print(f"Proposed partition: {partition.id}, num nodes: {len(partition.nodes)}")
+        print(f"DX Proposed partition: {partition.id}, num nodes: {len(partition.nodes)}")
     return partition_list
 
     # # import pdb; pdb.set_trace()
