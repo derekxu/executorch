@@ -92,7 +92,7 @@ class QnnOperatorSupport(OperatorSupportBase):
             )
 
         self.nodes_to_wrappers.clear()
-        print(f"[QNN Partitioner Op Support]: {node.target.__name__} | {supported}")
+        # print(f"[DX QNN Partitioner Op Support]: {node.target.__name__} | {supported}")
         return supported
 
 

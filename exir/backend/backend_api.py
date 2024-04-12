@@ -189,6 +189,7 @@ def _partition_and_lower_one_graph_module(
     """
     Partitioned and lowered the graph module based on the partition tag, this is to handle one graph module.
     """
+    logging.info("Entering _partition_and_lower_one_graph_module")
     for tag, delegation_spec in partition_result.partition_tags.items():
         # Create partition with nodes containing this tag. There should only be
         # one contained submodule per tag
@@ -201,6 +202,7 @@ def _partition_and_lower_one_graph_module(
             continue
 
         logging.debug(f"For tag {tag}, found nodes {node_list}")
+        logging.info(f"For tag {tag}, found nodes len {len(node_list)}")
         # Tag the nodes that are params as buffers, so we can order the submodule as (Parms + Buffers) (User Inputs)
         submodule, call_module_node = create_submodule_from_nodes(
             tagged_graph_module, node_list, tag
@@ -295,6 +297,7 @@ def _partition_and_lower(
 
     # Recursively partition and lower for submodules
     for name, submod, _node in get_control_flow_submodules(partitioned_module):
+        print(f"_partition_and_lower: name: {name}, submod: {submod}")
         partitioned_submodule = _partition_and_lower(
             submod, partition_result, owning_program
         )
@@ -345,6 +348,7 @@ def _(
         ExportedProgram: The input program, with some portions targeted for delegation.
     """
     copied_edge_program = copy.deepcopy(edge_program)
+    print(f"Partitioner: {partitioner_instance}")
     partitioner_result = partitioner_instance(copied_edge_program)
     tagged_exported_program = partitioner_result.tagged_exported_program
 

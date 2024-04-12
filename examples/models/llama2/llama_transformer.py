@@ -600,17 +600,18 @@ class Transformer(nn.Module):
 
             else:
                 h, _, _ = layer(h, freqs_cos, freqs_sin)
-            # if index > sliced_layer:
-            #     break
 
-        h = self.norm(h)
+        # ORIG
+        # h = self.norm(h)
 
-        logits = self.output(h)
-        if self.use_kv_cache:
-            return (logits, cache_k, cache_v)  # pyre-ignore
-        else:
-            # 'None' is not a valid return for export so have to split the return into if else
-            return logits
+        # logits = self.output(h)
+        # if self.use_kv_cache:
+        #     return (logits, cache_k, cache_v)  # pyre-ignore
+        # else:
+        #     # 'None' is not a valid return for export so have to split the return into if else
+        #     return logits
+
+        return h
 
     # For each layer return the sizes of the needed caches
     def get_cache_sizes(self):

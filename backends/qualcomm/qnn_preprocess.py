@@ -63,7 +63,7 @@ class QnnBackend(BackendDetails):
         py_op_wrapper_list = []
         for node in pass_result.graph_module.graph.nodes:
             if node.op == "call_function":
-                logger.info(f"Visiting: {node}, {node.target.__name__}")
+                # logger.info(f"Visiting: {node}, {node.target.__name__}")
                 if node.target.__name__ in node_visitors:
                     py_op_wrapper = node_visitors[node.target.__name__].define_node(
                         node, nodes_to_wrappers
