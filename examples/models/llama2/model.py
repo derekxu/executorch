@@ -33,9 +33,11 @@ LAYER_TO_REMOVE = -1
 # TODO: break up the graphs in qnn_preprocess.py
 
 # MODEL_NAME = "dummy_400k"
-MODEL_NAME = "odllm_0b5"
+# MODEL_NAME = "odllm_0b5"
 # MODEL_NAME = "odllm_1b4"
 # MODEL_NAME = "llama_7b"
+MODEL_NAME = "odllm_split"
+# TODO: 3 partitions, skip convert_to_linear (optimize in passes)
 
 # INPUTS = [1]
 # INPUTS = [1,2,3]
