@@ -418,24 +418,38 @@ class TransformerBlock(nn.Module):
             out = h + self.feed_forward(self.ffn_norm(h))
         return out, cache_k, cache_v
 
-class TransformerBlock1(nn.Module):
+
+class TransformerWrapper(nn.Module):
     def __init__(self, layer_id: int, args: ModelArgs):
         super().__init__()
+        self.layer_id = layer_id
         self.use_kv_cache = args.use_kv_cache
         self.n_heads = args.n_heads
         self.dim = args.dim
         self.head_dim = args.dim // args.n_heads
         self.attention = Attention(args, layer_id)
-        if args.moe:
-            self.block_sparse_moe = MOEFeedForward(args)
-        else:
-            self.feed_forward = FeedForward(args)
+        self.feed_forward = FeedForward(args)
         self.attention_norm = RMSNorm(args.dim, eps=args.norm_eps)
         self.ffn_norm = RMSNorm(args.dim, eps=args.norm_eps)
+        self.tok_embeddings = nn.Embedding(args.vocab_size, args.dim, device="cpu")
+
+        freqs_cos, freqs_sin = precompute_freqs_cis(
+            args.dim // args.n_heads,
+            args.max_seq_len,
+            args.rope_freq_base,
+        )
+        self.register_buffer("freqs_cos", freqs_cos, persistent=False)
+        self.register_buffer("freqs_sin", freqs_sin, persistent=False)
 
     def forward(
-        self, x, freqs_cos, freqs_sin, start_pos=None, cache_k=None, cache_v=None
+        self, tokens, x, freqs_cos=None, freqs_sin=None, start_pos=None, cache_k=None, cache_v=None
     ):  # x: 1xN
+        _bsz, seqlen = tokens.shape
+        freqs_cos = self.freqs_cos[:seqlen]
+        freqs_sin = self.freqs_sin[:seqlen]
+        if self.layer_id == 0:
+            x = self.tok_embeddings(tokens)
+
         h, cache_k, cache_v = self.attention.forward(
             self.attention_norm(x),
             freqs_cos,
@@ -446,56 +460,8 @@ class TransformerBlock1(nn.Module):
         )
 
         h = x + h
-        if hasattr(self, "block_sparse_moe"):
-            out = h + self.block_sparse_moe(self.ffn_norm(h))
-        else:
-            out = h + self.feed_forward(self.ffn_norm(h))
+        out = h + self.feed_forward(self.ffn_norm(h))
         return out, cache_k, cache_v
-
-class RMSNorm1(torch.nn.Module):
-    def __init__(self, dim: int, eps: float = 1e-6):
-        """
-        Initialize the RMSNorm normalization layer.
-
-        Args:
-            dim (int): The dimension of the input tensor.
-            eps (float, optional): A small value added to the denominator for numerical stability. Default is 1e-6.
-
-        Attributes:
-            eps (float): A small value added to the denominator for numerical stability.
-            weight (nn.Parameter): Learnable scaling parameter.
-
-        """
-        super().__init__()
-        self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
-
-    def _norm(self, x):
-        """
-        Apply the RMSNorm normalization to the input tensor.
-
-        Args:
-            x (torch.Tensor): The input tensor.
-
-        Returns:
-            torch.Tensor: The normalized tensor.
-
-        """
-        return x * torch.rsqrt((x * x).mean(-1, keepdim=True) + self.eps)
-
-    def forward(self, x):
-        """
-        Forward pass through the RMSNorm layer.
-
-        Args:
-            x (torch.Tensor): The input tensor.
-
-        Returns:
-            torch.Tensor: The output tensor after applying RMSNorm.
-
-        """
-        output = self._norm(x.float()).type_as(x)
-        return output * self.weight
 
 class Transformer(nn.Module):
     def __init__(self, params: ModelArgs):
@@ -505,13 +471,6 @@ class Transformer(nn.Module):
         self.n_layers = params.n_layers
 
         self.tok_embeddings = nn.Embedding(params.vocab_size, params.dim)
-        self.layers = torch.nn.ModuleList()
-        for layer_id in range(params.n_layers):
-            self.layers.append(TransformerBlock(layer_id, params))
-            # if layer_id > LLAMA_1_LAYER:
-            #     self.layers.append(TransformerBlock1(layer_id, params))
-            # else:
-            #     self.layers.append(TransformerBlock(layer_id, params))
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = nn.Linear(params.dim, params.vocab_size, bias=False)
         self.use_kv_cache = params.use_kv_cache
@@ -521,8 +480,15 @@ class Transformer(nn.Module):
             params.max_seq_len,
             params.rope_freq_base,
         )
-        self.register_buffer("freqs_cos", freqs_cos, persistent=False)
-        self.register_buffer("freqs_sin", freqs_sin, persistent=False)
+        self.layers = torch.nn.ModuleList()
+        if self.use_kv_cache:
+            self.register_buffer("freqs_cos", freqs_cos, persistent=False)
+            self.register_buffer("freqs_sin", freqs_sin, persistent=False)
+            for layer_id in range(params.n_layers):
+                self.layers.append(TransformerBlock(layer_id, params))
+        else:
+            for layer_id in range(params.n_layers):
+                self.layers.append(TransformerWrapper(layer_id, params))
 
     def forward(
         self,
@@ -537,44 +503,16 @@ class Transformer(nn.Module):
     ) -> Union[
         torch.Tensor, Tuple[torch.Tensor, List[torch.Tensor], List[torch.Tensor]]
     ]:
-        _bsz, seqlen = tokens.shape
-        h = self.tok_embeddings(tokens)
+        # h = self.tok_embeddings(tokens)
+        h  = None
 
         if self.use_kv_cache:
-            assert (
-                cache_k is not None and cache_v is not None and start_pos is not None
-            ), "Caches and start_pos must be provided when use_kv_cache is True"
-            assert (
-                cache_k.size(0) == self.n_layers
-            ), f"{cache_k.size(0)} != {self.n_layers}"
-            assert (
-                cache_v.size(0) == self.n_layers
-            ), f"{cache_v.size(0)} != {self.n_layers}"
-
             sp = start_pos.item()
-            # self.params.max_seq_len - 1 because of 0 based indexing, and - 1 again because our input seq len is 1 and its added to the cache before accessing the cache
-            torch._constrain_as_size(sp, min=0, max=self.params.max_seq_len - 2)
-            torch._constrain_as_value(
-                cache_k.shape[0],
-                max=self.n_layers,
-                min=self.n_layers,
-            )
-            torch._constrain_as_value(
-                cache_v.shape[0], min=self.n_layers, max=self.n_layers
-            )
-            # when KV cache is used, seqlen is most likely 1. We want to slice from the start_pos.
-            freqs_cos = self.freqs_cos[sp : sp + seqlen]
-            freqs_sin = self.freqs_sin[sp : sp + seqlen]
-        else:
-            # assert (
-            #     start_pos is None and cache_k is None and cache_v is None
-            # ), "Caches and start_pos are unused when use_kv_cache is False"
+            _bsz, seqlen = tokens.shape
             freqs_cos = self.freqs_cos[:seqlen]
             freqs_sin = self.freqs_sin[:seqlen]
+            h = self.tok_embeddings(tokens)
 
-        # sliced_layer = self.n_layers
-        # if SLICE_MODEL:
-        #     sliced_layer = self.n_layers // 4
         for index, layer in enumerate(self.layers):
             if self.use_kv_cache:
                 if self.params.use_sdpa_with_kv_cache_op:
@@ -599,19 +537,98 @@ class Transformer(nn.Module):
                     cache_v[index] = updated_cache_v
 
             else:
-                h, _, _ = layer(h, freqs_cos, freqs_sin)
-
-        # ORIG
-        # h = self.norm(h)
-
-        # logits = self.output(h)
-        # if self.use_kv_cache:
-        #     return (logits, cache_k, cache_v)  # pyre-ignore
-        # else:
-        #     # 'None' is not a valid return for export so have to split the return into if else
-        #     return logits
+                h, _, _ = layer(tokens, h)
 
         return h
+
+    # def forward(
+    #     self,
+    #     tokens: torch.Tensor,
+    #     start_pos: Optional[
+    #         torch.Tensor
+    #     ] = None,  # Scalar tensor indicating size of window of the caches
+    #     cache_k: Optional[
+    #         torch.Tensor
+    #     ] = None,  # n_layers long, it should be a list of tensors to accommodate the potential size difference among attention layers. The current implementation is overly simplified.
+    #     cache_v: Optional[torch.Tensor] = None,  # n_layers long
+    # ) -> Union[
+    #     torch.Tensor, Tuple[torch.Tensor, List[torch.Tensor], List[torch.Tensor]]
+    # ]:
+    #     _bsz, seqlen = tokens.shape
+    #     h = self.tok_embeddings(tokens)
+
+    #     if self.use_kv_cache:
+    #         assert (
+    #             cache_k is not None and cache_v is not None and start_pos is not None
+    #         ), "Caches and start_pos must be provided when use_kv_cache is True"
+    #         assert (
+    #             cache_k.size(0) == self.n_layers
+    #         ), f"{cache_k.size(0)} != {self.n_layers}"
+    #         assert (
+    #             cache_v.size(0) == self.n_layers
+    #         ), f"{cache_v.size(0)} != {self.n_layers}"
+
+    #         sp = start_pos.item()
+    #         # self.params.max_seq_len - 1 because of 0 based indexing, and - 1 again because our input seq len is 1 and its added to the cache before accessing the cache
+    #         torch._constrain_as_size(sp, min=0, max=self.params.max_seq_len - 2)
+    #         torch._constrain_as_value(
+    #             cache_k.shape[0],
+    #             max=self.n_layers,
+    #             min=self.n_layers,
+    #         )
+    #         torch._constrain_as_value(
+    #             cache_v.shape[0], min=self.n_layers, max=self.n_layers
+    #         )
+    #         # when KV cache is used, seqlen is most likely 1. We want to slice from the start_pos.
+    #         freqs_cos = self.freqs_cos[sp : sp + seqlen]
+    #         freqs_sin = self.freqs_sin[sp : sp + seqlen]
+    #     else:
+    #         # assert (
+    #         #     start_pos is None and cache_k is None and cache_v is None
+    #         # ), "Caches and start_pos are unused when use_kv_cache is False"
+    #         freqs_cos = self.freqs_cos[:seqlen]
+    #         freqs_sin = self.freqs_sin[:seqlen]
+
+    #     # sliced_layer = self.n_layers
+    #     # if SLICE_MODEL:
+    #     #     sliced_layer = self.n_layers // 4
+    #     for index, layer in enumerate(self.layers):
+    #         if self.use_kv_cache:
+    #             if self.params.use_sdpa_with_kv_cache_op:
+    #                 h, updated_cache_k, updated_cache_v = layer(
+    #                     h,
+    #                     freqs_cos,
+    #                     freqs_sin,
+    #                     sp,  # pyre-ignore[61]
+    #                     cache_k,
+    #                     cache_v,
+    #                 )
+    #             else:
+    #                 h, updated_cache_k, updated_cache_v = layer(
+    #                     h,
+    #                     freqs_cos,
+    #                     freqs_sin,
+    #                     sp,  # pyre-ignore[61]
+    #                     cache_k[index],  # pyre-ignore[16]
+    #                     cache_v[index],
+    #                 )
+    #                 cache_k[index] = updated_cache_k  # pyre-ignore[16]
+    #                 cache_v[index] = updated_cache_v
+
+    #         else:
+    #             h, _, _ = layer(h, freqs_cos, freqs_sin)
+
+    #     # ORIG
+    #     # h = self.norm(h)
+
+    #     # logits = self.output(h)
+    #     # if self.use_kv_cache:
+    #     #     return (logits, cache_k, cache_v)  # pyre-ignore
+    #     # else:
+    #     #     # 'None' is not a valid return for export so have to split the return into if else
+    #     #     return logits
+
+    #     return h
 
     # For each layer return the sizes of the needed caches
     def get_cache_sizes(self):

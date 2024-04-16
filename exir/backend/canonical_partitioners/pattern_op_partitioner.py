@@ -28,6 +28,8 @@ TOTAL_NUM_NODES = 819
 
 NUM_NODES_PER_SLICE = 800
 
+NUM_LAYERS = 2
+
 class _DependencyViewer:
     def __init__(self, graph_module: GraphModule):
         self.upstreams = collections.defaultdict(set)
@@ -92,6 +94,54 @@ class CapabilityPartitioner:
         partitions_by_id: Dict[int, Partition] = {}  # mapping from partition_id to partition
         new_partition_id = itertools.count()
 
+        def can_merge_nodes(all_merged_nodes: List[Node]):
+            merged_set = set(all_merged_nodes)
+            def dfs_iter_find_cycle(all_user_nodes: List[Node]):
+                for user_node in all_user_nodes:
+                    visited_partition_ids = set()
+
+                    for path_node in self.dependency_viewer.downstreams_of(user_node):
+                        # If any of the nodes in the dfs path of this node are in the merged_nodes
+                        # list then there is a cycle in the graph.
+                        if path_node in merged_set:
+                            print(f"DX found downstream node {path_node.name} of user_node {user_node.name} in merged nodes")
+                            return True
+
+                        # # If any of the nodes in the dfs path of this node are in the assignment
+                        # # map then we have to make sure that the partitions that these nodes belong
+                        # # to do not form a cycle with the current partitions being merged. This means
+                        # # iterating through all the nodes in all the parititons that are traversed in
+                        # # the dfs path and checking if they are in the merged_nodes list.
+                        # if path_node in assignment:
+                        #     partition_id = assignment[path_node]
+                        #     # If the partition id has already been visited then we know that it doesn't
+                        #     # form a cycle with the current partitions being merged.
+                        #     if partition_id in visited_partition_ids:
+                        #         continue
+                        #     p_map = partition_map[partition_id]
+                        #     if self_id in p_map or other_id in p_map:
+                        #         if self_id in p_map:
+                        #         return True
+
+                        #     visited_partition_ids.add(partition_id)
+
+                return False
+
+            # check if merge would create cyclic dependency.
+            next_user_nodes = []
+            for node in all_merged_nodes:
+                for user_node in node.users:
+                    if user_node not in all_merged_nodes:
+                        next_user_nodes.append(user_node)
+
+            if dfs_iter_find_cycle(next_user_nodes):
+                # return false indicating cyclic dependency found and
+                # merge is aborted
+                return False
+
+            return True
+
+
         # try to merge partition other_id into partition self_id
         # merge only happens if the end graph doesn't contain cyclic dependency
         # returns `True` when merge happens, `False` otherwise.
@@ -102,8 +152,8 @@ class CapabilityPartitioner:
             # Stop merging at last partition
             self_num_nodes = len(partitions_by_id[self_id].nodes)
             others_num_nodes = len(partitions_by_id[other_id].nodes)
-            if self_num_nodes > others_num_nodes:
-                return maybe_merge_partition(other_id, self_id)
+            # if self_num_nodes > others_num_nodes:
+            #     return maybe_merge_partition(other_id, self_id)
             print(f"DX maybe_merge_partition other_id: {other_id}, self_id: {self_id}")
             # if self_num_nodes == 1 or others_num_nodes > NUM_NODES_PER_SLICE:
 
@@ -171,8 +221,24 @@ class CapabilityPartitioner:
 
             return True
 
+        def get_layer_id(node: Node, n_layers: int) -> int:
+            nn_module_stack_key_prefix = "L__self___layers_"
+            if node.name in ['output']:
+                return n_layers - 1
+            elif node.name in ['arg23_1']:
+                return -1
+
+            if len(node.meta['nn_module_stack'].keys()) == 1:
+                return -1
+
+            for i in range(n_layers):
+                if f"{nn_module_stack_key_prefix}{i}" in node.meta['nn_module_stack'].keys():
+                    return i
+
+            return -1
+
+
         def merge_single_node(node: Node, id: Optional[int]):
-            print("DX merge_single_node")
             def _update_partition_map(node: Node, id: int):
                 # Iterate through all the downstream nodes of this node and update the partition map
                 # to indicate that there is a path from the partition id of this node to the target
@@ -208,7 +274,48 @@ class CapabilityPartitioner:
 
         print("Proposing partitions...")
         print(f"DX Current num partitions: {len(partitions_by_id.keys())}")
+        # # NEW CODE
+        # root_partitions: Dict[int, Partition] = {}  # mapping from root layer (-1, 0, 1) to partition
+        # n_layers = 2
+        # for node in reversed(self.graph_module.graph.nodes):
+        #     if self.__is_node_supported(node) and node not in assignment:
+        #         partition_id = next(new_partition_id)
+        #         print(f"DX assigning single node [{node.name}] to partition {partition_id}", flush=True)
+        #         merge_single_node(node, partition_id)
+        #         layer_id = get_layer_id(node, n_layers)
+        #         if layer_id not in root_partitions.keys():
+        #             root_partitions[layer_id] = partitions_by_id[partition_id]
+
+        # print("DX Single node assignment DONE", flush=True)
+
+        # for node in reversed(self.graph_module.graph.nodes):
+        #     print(f"DX merging node [{node.name}]", flush=True)
+        #     if self.__is_node_supported(node) and node in assignment:
+        #         layer_id = get_layer_id(node, n_layers)
+        #         root_partition_id = root_partitions[layer_id].id
+        #         self_id = assignment[node]
+        #         merged = False
+        #         if self_id != root_partition_id:
+        #             print(f"DX merging partition [{self_id}] into [{root_partition_id}]", flush=True)
+        #             merged = maybe_merge_partition(root_partition_id, self_id)
+
+        #         if not merged and len(partitions_by_id.keys()) > 3:
+        #             # Forever for looped
+        #             for root_layer_id in range(-1, n_layers):
+        #                 root_id = root_partitions[layer_id].id
+        #                 if self_id != root_id and not merged:
+        #                     print(f"DX for loop attempt merging partition [{self_id}] into [{root_id}]")
+        #                     merged = maybe_merge_partition(root_id, self_id)
+
+
+        # # END NEW CODE
+
+
+
+        # ORIGINAL CODE
         for node in reversed(self.graph_module.graph.nodes):
+            if 'nn_module_stack' not in node.meta:
+                print(f"DX Node [{node.name}] has no nn_module_stack key in meta")
             # use Dict as an ordered set to ensure deterministic partitioning result, don't care value
             merge_candidates: Dict[int, None] = {}
 
@@ -237,6 +344,7 @@ class CapabilityPartitioner:
                     # this is a no-op
                     print(f"DX calling maybe_merge_partition, num partitions: {len(partitions_by_id.keys())}")
                     maybe_merge_partition(self_id, other_id)
+        # END ORIGINAL CODE
 
         # post processing to re-assign "getitem" nodes into upstream partition
         print("Reassigning getitem nodes to its producer node's partition...")
@@ -283,8 +391,64 @@ class CapabilityPartitioner:
             # print("partition #%s: %s", id, [node.name for node in partition.nodes])
             print(f"partition {id}, num nodes: {len(partition.nodes)}")
 
-        # End of propose_sliced_partitions()
+
         partition_list = list(partitions_by_id.values())
+        orig_partition = partition_list[0]
+        partitions_by_id[orig_partition.id] = orig_partition
+        num_layers = NUM_LAYERS
+        n_nodes_per_layer = [0] * num_layers
+        nn_module_stack_key_prefix = "L__self___layers_"
+        self_nodes = 0
+        for node in orig_partition.nodes:
+            for i in range(num_layers):
+                if f"{nn_module_stack_key_prefix}{i}" in node.meta['nn_module_stack'].keys():
+                    n_nodes_per_layer[i] += 1
+            if len(node.meta['nn_module_stack'].keys()) == 1:
+                self_nodes += 1
+
+
+        print(f"DX nodes summary, self nodes: {self_nodes}, n_nodes_per_layer: {n_nodes_per_layer}, total_nodes = {len(orig_partition.nodes)}")
+
+
+        # Update
+        for i in range(num_layers):
+            new_partition_id = orig_partition.id+1+i
+            partitions_by_id[new_partition_id] = Partition(id=new_partition_id, nodes=[])
+        new_partition_node_id_pairs = []
+        for node in orig_partition.nodes:
+            for i in range(num_layers):
+                if i == 0:
+                    continue
+                if f"{nn_module_stack_key_prefix}{i}" in node.meta['nn_module_stack'].keys():
+                    new_partition_id = orig_partition.id+1+i
+                    new_partition_node_id_pairs.append((new_partition_id, node))
+
+        print(f"DX propose to have {len(new_partition_node_id_pairs)} new partition pairs")
+
+        # Check before adding
+        for partition_id, node in reversed(new_partition_node_id_pairs):
+            partitions_by_id[partition_id].add_node(node)
+            orig_partition.remove_node(node)
+            if not can_merge_nodes(orig_partition.nodes):
+                print(f"DX Node [{node.name}] CANNOT be removed from orig_partition {orig_partition.id}")
+                partitions_by_id[partition_id].remove_node(node)
+                orig_partition.add_node(node)
+            elif not can_merge_nodes(partitions_by_id[partition_id].nodes):
+                print(f"DX Node [{node.name}] CANNOT be added to new partition {partition_id}")
+                partitions_by_id[partition_id].remove_node(node)
+                orig_partition.add_node(node)
+
+        # # FORCE adding partition
+        # for partition_id, node in reversed(new_partition_node_id_pairs):
+        #     partitions_by_id[partition_id].add_node(node)
+        #     orig_partition.remove_node(node)
+
+        # partition_list = list(partitions_by_id.values())
+        # for partition in partition_list:
+        #     if not can_merge_nodes(partition.nodes):
+        #         print(f"DX Partition {partition.id}, num nodes: [{len(partition.nodes)}] CANNOT be merged")
+
+        # End of propose_sliced_partitions()
         return partition_list
 
     def propose_partitions(self) -> List[Partition]:
@@ -315,7 +479,7 @@ class CapabilityPartitioner:
             others_num_nodes = len(partitions_by_id[other_id].nodes)
             if self_num_nodes > others_num_nodes:
                 return maybe_merge_partition(other_id, self_id)
-            print(f"DX maybe_merge_partition other_id: {other_id}, self_id: {self_id}")
+            print(f"DX maybe_merge_partition self_id: {self_id}, other_id: {other_id}")
             # if self_num_nodes == 1 or others_num_nodes > NUM_NODES_PER_SLICE:
 
             #     return False
@@ -629,12 +793,39 @@ def generate_partitions_from_list_of_nodes(
         for node in partition.nodes:
             # print(node.meta['nn_module_stack'].keys())
             stack_str = ",".join(node.meta['nn_module_stack'].keys())
-            print(f"Node: [{node.name}], nn_module_stack: {stack_str}")
+            next_users = []
+            for user in node.users:
+                next_users.append(user.name)
+            users_str = ",".join(next_users)
+
+            print(f"Node: [{node.name}], users: [{users_str}], num_users: {len(next_users)}, nn_module_stack: {stack_str}")
             # print(f"Node: [{node.name}], stack_trace: [{node.meta['stack_trace']}], nn_module_stack: {stack_str}")
             # if f"{nn_module_stack_key_prefix}7" in node.meta['nn_module_stack'].keys():
             #     print("FOUND node in layer 7")
             # import pdb; pdb.set_trace()
             node.meta.pop("match", False)
+
+    # n_nodes_per_layer = [0,0]
+    # self_nodes = 0
+    # nn_module_stack_key_prefix = "L__self___layers_"
+    # orig_partition = partition_list[0]
+    # for node in orig_partition.nodes:
+    #     for i in range(len(n_nodes_per_layer)):
+    #         if f"{nn_module_stack_key_prefix}{i}" in node.meta['nn_module_stack'].keys():
+    #             n_nodes_per_layer[i] += 1
+    #     if len(node.meta['nn_module_stack'].keys()) == 1:
+    #         self_nodes += 1
+
+
+    # print(f"DX nodes summary, self nodes: {self_nodes}, n_nodes_per_layer: {n_nodes_per_layer}, total_nodes = {len(orig_partition.nodes)}")
+
+        # if "L__self___norm" in node.meta['nn_module_stack'].keys():
+        #     new_partition_nodes.append(node)
+        # if "L__self___output" in node.meta['nn_module_stack'].keys():
+        #     new_partition_nodes.append(node)
+        # if len(node.meta['nn_module_stack'].keys()) == 1:
+        #     self_nodes.append(node)
+
 
     # # ## update partitions
     # nn_module_stack_key_prefix = "L__self___layers_"
@@ -671,13 +862,28 @@ def generate_partitions_from_list_of_nodes(
 
     # # print(f"Number of L__self__ ONLY nodes: {len(self_nodes)}")
 
+
+    # partitions_by_id: Dict[int, Partition] = {}  # mapping from partition_id to partition
+    # partitions_by_id[orig_partition.id] = orig_partition
+    # for i in range(len(n_nodes_per_layer)):
+    #     new_partition_id = orig_partition.id+1+i
+    #     partitions_by_id[new_partition_id] = Partition(id=new_partition_id, nodes=[])
+    # new_partition_node_id_pairs = []
+    # for node in orig_partition.nodes:
+    #     for i in range(len(n_nodes_per_layer)):
+    #         if f"{nn_module_stack_key_prefix}{i}" in node.meta['nn_module_stack'].keys():
+    #             new_partition_id = orig_partition.id+1+i
+    #             new_partition_node_id_pairs.append((new_partition_id, node))
+
     # for partition_id, node in new_partition_node_id_pairs:
     #     partitions_by_id[partition_id].add_node(node)
     #     orig_partition.remove_node(node)
     # partition_list = list(partitions_by_id.values())
 
     for partition in partition_list:
-        print(f"DX Proposed partition: {partition.id}, num nodes: {len(partition.nodes)}")
+        if len(partition.nodes) > 0:
+            example_node = list(partition.nodes)[0]
+            print(f"pattern_op_partitioner.py DX Proposed partition: {partition.id}, num nodes: {len(partition.nodes)}, example node: [{example_node.name}]")
     return partition_list
 
     # return [orig_partition, new_partition]

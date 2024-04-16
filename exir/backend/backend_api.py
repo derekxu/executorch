@@ -365,8 +365,8 @@ def _(
         partitioner_result.partition_tags is not None
     ), f"Partitioner {partitioner_instance} needs a `partition_tags` field containing a mapping of tags to delegate spec"
 
-    for tag in partitioner_result.partition_tags:
-        print(f"backend_api: Partitioned tag: {tag}")
+    for tag, delegate_spec in partitioner_result.partition_tags.items():
+        print(f"backend_api.py: Partitioned tag: {tag}, backend: {delegate_spec.backend_id}")
 
     tagged_graph_module = _partition_and_lower(
         tagged_exported_program.graph_module, partitioner_result, edge_program
