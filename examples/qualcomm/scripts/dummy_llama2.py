@@ -109,7 +109,7 @@ if __name__ == "__main__":
         instance.get_example_inputs(), args.use_kv_cache, filename
     )
 
-    pte_filename = f"{MODEL_NAME}_len_{INPUT_LEN}_{quant_mode}_splitted"
+    pte_filename = f"{MODEL_NAME}_len_{INPUT_LEN}_{quant_mode}_{args.model}"
 
     # build_executorch_binary(
     #     instance.get_eager_model().eval(),

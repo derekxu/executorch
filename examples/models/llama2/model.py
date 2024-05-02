@@ -35,8 +35,9 @@ MODEL_NAME = "odllm_0b5"
 
 # INPUTS = [1]
 # INPUTS = [1,2,3]
-INPUTS = [i for i in range(1, 256)]
-INPUTS[0] = INPUTS[len(INPUTS)-1]
+MAX_INPUT_ID = 46
+INPUTS = [i for i in range(1, MAX_INPUT_ID)]
+# INPUTS[0] = INPUTS[len(INPUTS)-1]
 
 
 class Llama2Model(EagerModelBase):
