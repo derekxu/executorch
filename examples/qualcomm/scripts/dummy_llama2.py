@@ -13,7 +13,7 @@ from multiprocessing.connection import Client
 import numpy as np
 import torch
 from executorch.backends.qualcomm.quantizer.quantizer import QuantDtype
-from executorch.examples.models.llama2 import Llama2Model
+from executorch.examples.models.llama2 import Llama2Model, INPUTS, MODEL_NAME
 from executorch.examples.qualcomm.scripts.utils import (
     build_executorch_binary,
     make_output_dir,
@@ -21,6 +21,7 @@ from executorch.examples.qualcomm.scripts.utils import (
     SimpleADB,
 )
 
+INPUT_LEN = len(INPUTS)
 
 def create_device_inputs(example_inputs, use_kv_cache):
     inputs = [inp.to(torch.int32) for inp in example_inputs]
@@ -107,8 +108,9 @@ if __name__ == "__main__":
         instance.get_example_inputs(), args.use_kv_cache
     )
 
-    pte_filename = "dummy_llama2_qnn"
-
+    quant_mode = args.ptq
+    if not quant_mode:
+        quant_mode = "fp"
     if args.ptq == "8a8w":
         quant_dtype = QuantDtype.use_8a8w
     elif args.ptq == "16a16w":
@@ -123,6 +125,8 @@ if __name__ == "__main__":
     if args.use_fp16:
         quant_dtype = None
 
+    pte_filename = f"{MODEL_NAME}_len{INPUT_LEN}_{quant_mode}"
+
     build_executorch_binary(
         instance.get_eager_model().eval(),
         inputs,
@@ -133,6 +137,8 @@ if __name__ == "__main__":
         quant_dtype=quant_dtype,
         shared_buffer=args.shared_buffer,
     )
+
+    print(f"PTE: {args.artifact}/{pte_filename}.pte")
 
     if args.compile_only:
         sys.exit(0)

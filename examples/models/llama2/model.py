@@ -8,6 +8,7 @@
 import json
 import os
 from pathlib import Path
+from collections import OrderedDict
 
 import torch
 
@@ -26,6 +27,12 @@ except ImportError:
 
 from ..model_base import EagerModelBase
 
+# MODEL_NAME = "dummy_400k"
+MODEL_NAME = "odllm_0b5"
+# MODEL_NAME = "llama_7b_8layer"
+
+INPUT_LEN = 47
+INPUTS = [i for i in range(INPUT_LEN)]
 
 class Llama2Model(EagerModelBase):
     def __init__(self, **kwargs):
@@ -59,11 +66,11 @@ class Llama2Model(EagerModelBase):
         checkpoint_path = (
             kwargs["checkpoint"]
             if "checkpoint" in kwargs
-            else ckpt_dir / "demo_rand_params.pth"
+            else ckpt_dir / f"{MODEL_NAME}.pth"
         )
 
         params_path = (
-            kwargs["params"] if "params" in kwargs else ckpt_dir / "demo_config.json"
+            kwargs["params"] if "params" in kwargs else ckpt_dir / f"{MODEL_NAME}.json"
         )
 
         self.use_kv_cache = (
@@ -133,6 +140,8 @@ the checkpoint format to avoid generating faulty models.
 ************************************************************
 """
             )
+
+        checkpoint = self.convert_bfloat16_to_float(checkpoint, MODEL_NAME)
 
         # get checkpoint dtype
         self.dtype = None
@@ -214,7 +223,7 @@ the checkpoint format to avoid generating faulty models.
         else:
             return (
                 torch.tensor(
-                    [[1, 2, 3]], dtype=torch.long
+                    [INPUTS], dtype=torch.long
                 ),  # tokens, with kv cache our input token length is always just 1 token.
             )
 
@@ -228,3 +237,48 @@ the checkpoint format to avoid generating faulty models.
                 [0], dtype=torch.long
             ),  # start_pos, what token of output are we on.)
         )
+
+    def convert_bfloat16_to_float(self, checkpoint, model_name):
+        output_ckpt = OrderedDict()
+        output_ckpt["tok_embeddings.weight"] = checkpoint["tok_embeddings.weight"].to(torch.float32)
+        # layers
+        # 0.5B -> 8 layers
+        # 1.4B -> 24 layers
+        num_layers = 8
+        if model_name == "odllm_1b4":
+            num_layers = 24
+        elif model_name.startswith("llama_7b"):
+            num_layers = 32
+
+        for i in range(num_layers):
+            output_ckpt[f"layers.{i}.attention.wq.weight"] = checkpoint[
+                f"layers.{i}.attention.wq.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.attention.wk.weight"] = checkpoint[
+                f"layers.{i}.attention.wk.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.attention.wv.weight"] = checkpoint[
+                f"layers.{i}.attention.wv.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.attention.wo.weight"] = checkpoint[
+                f"layers.{i}.attention.wo.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.feed_forward.w1.weight"] = checkpoint[
+                f"layers.{i}.feed_forward.w1.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.feed_forward.w2.weight"] = checkpoint[
+                f"layers.{i}.feed_forward.w2.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.feed_forward.w3.weight"] = checkpoint[
+                f"layers.{i}.feed_forward.w3.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.attention_norm.weight"] = checkpoint[
+                f"layers.{i}.attention_norm.weight"
+            ].to(torch.float32)
+            output_ckpt[f"layers.{i}.ffn_norm.weight"] = checkpoint[
+                f"layers.{i}.ffn_norm.weight"
+            ].to(torch.float32)
+
+        output_ckpt["norm.weight"] = checkpoint["norm.weight"].to(torch.float32)
+        output_ckpt["output.weight"] = checkpoint["output.weight"].to(torch.float32)
+        return output_ckpt

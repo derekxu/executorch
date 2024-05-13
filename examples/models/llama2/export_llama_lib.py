@@ -126,7 +126,7 @@ def build_args_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-c",
         "--checkpoint",
-        default=f"{ckpt_dir}/params/demo_rand_params.pth",
+        default=f"{ckpt_dir}/params/dummy_400k.pth",
         help="checkpoint path",
     )
 
@@ -177,7 +177,7 @@ def build_args_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "-p",
         "--params",
-        default=f"{ckpt_dir}/params/demo_config.json",
+        default=f"{ckpt_dir}/params/dummy_400k.json",
         help="config.json",
     )
     parser.add_argument(
