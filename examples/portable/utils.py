@@ -16,6 +16,7 @@ from executorch.exir import EdgeProgramManager, ExecutorchProgramManager, to_edg
 from executorch.exir.tracer import Value
 from torch._export import capture_pre_autograd_graph
 from torch.export import export, ExportedProgram
+from executorch.backends.qualcomm.utils.utils import draw_graph
 
 
 _EDGE_COMPILE_CONFIG = exir.EdgeCompileConfig(
@@ -107,6 +108,8 @@ def save_pte_program(
         filename = model_name
     else:
         filename = os.path.join(output_dir, f"{model_name}.pte")
+
+    draw_graph("llm_graph", "/tmp", prog.exported_program().graph_module)
 
     try:
         with open(filename, "wb") as file:

@@ -11,6 +11,11 @@ from typing import Optional, Union
 
 import lm_eval
 import torch
+from executorch.examples.models.llama2.lib.quant_lib import (
+    _get_pt2e_quantization_params,
+    get_pt2e_quantizers,
+    get_qnn_quantizer,
+)
 
 from executorch.examples.models.llama2.tokenizer.tiktoken import Tokenizer as Tiktoken
 from executorch.examples.models.llama2.tokenizer.tokenizer import (
@@ -235,11 +240,26 @@ def gen_eval_wrapper(
 
     # GPTFastEvalWrapper: Create a wrapper around a pre-exported model
     manager: LlamaEdgeManager = _prepare_for_llama_export(model_name, args)
+    quantizers = []
+    if args.pt2e_quantize:
+        pt2e_quant_params = _get_pt2e_quantization_params(args)
+        quantizers = get_pt2e_quantizers(pt2e_quant_params, args)
+        quant_dtype = None
+        if args.qnn and args.pt2e_quantize:
+            assert len(quantizers) == 0, "Should not enable both xnnpack and qnn"
+            qnn_quantizer, quant_dtype = get_qnn_quantizer(args)
+            quantizers.append(qnn_quantizer)
+
+    manager: LlamaEdgeManager = _prepare_for_llama_export(model_name, args)
+    print("quantizers: ", quantizers)
+    manager = manager.export_to_edge(quantizers)
+
     model = (
-        manager.model.eval().to(device="cuda")
+        manager.edge_manager.exported_program().module().to(device="cuda")
         if torch.cuda.is_available()
-        else manager.model.to(device="cpu")
+        else manager.edge_manager.exported_program().module().to(device="cpu")
     )
+
     return GPTFastEvalWrapper(
         model=model,
         tokenizer=tokenizer,
