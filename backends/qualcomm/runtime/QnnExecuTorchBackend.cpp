@@ -215,16 +215,18 @@ Error QnnExecuTorchBackend::execute(
     }
     output_tensor_structs.push_back(output_tensor->CloneTensorStruct());
   }
+  ET_LOG(Info, "calling QnnManager::Execute()");
+  qnn_manager->Execute(input_tensor_structs, output_tensor_structs);
 
-  ET_CHECK_OR_RETURN_ERROR(
-      qnn_manager->Execute(input_tensor_structs, output_tensor_structs) ==
-          Error::Ok,
-      Internal,
-      "Fail to execute graph");
-  ET_CHECK_OR_RETURN_ERROR(
-      qnn_manager->ProfileExecuteData(context.event_tracer()) == Error::Ok,
-      Internal,
-      "Fail to profile graph");
+  // ET_CHECK_OR_RETURN_ERROR(
+  //     qnn_manager->Execute(input_tensor_structs, output_tensor_structs) ==
+  //         Error::Ok,
+  //     Internal,
+  //     "Fail to execute graph");
+  // ET_CHECK_OR_RETURN_ERROR(
+  //     qnn_manager->ProfileExecuteData(context.event_tracer()) == Error::Ok,
+  //     Internal,
+  //     "Fail to profile graph");
 
   return Error::Ok;
 }

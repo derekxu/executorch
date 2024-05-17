@@ -324,6 +324,7 @@ Error Runner::generate(
     }
   }
 
+  int inference_id = 0;
   // Generate our tokens
   while (pos < seq_len - 1) {
     // Run the model
@@ -332,6 +333,7 @@ Error Runner::generate(
 
     if (pos == num_prompt_tokens) {
       stats_.first_token_ms = util::time_in_ms();
+      ET_LOG(Info, "First token time: %ld (ms)", stats_.first_token_ms);
     } else if (pos == num_prompt_tokens - 1) {
       stats_.prompt_eval_end_ms = util::time_in_ms();
     }

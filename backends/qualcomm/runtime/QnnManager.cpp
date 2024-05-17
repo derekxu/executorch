@@ -206,16 +206,21 @@ Error QnnManager::AllocateTensor(
 Error QnnManager::Execute(
     const std::vector<Qnn_Tensor_t>& input_tensor_structs,
     std::vector<Qnn_Tensor_t>& output_tensor_structs) {
-  Qnn_ErrorHandle_t error = QNN_SUCCESS;
 
-  error = backend_params_ptr_->qnn_graph_ptr_->GraphExecute(
+  backend_params_ptr_->qnn_graph_ptr_->GraphExecute(
       input_tensor_structs, output_tensor_structs);
 
-  if (error != QNN_SUCCESS) {
-    QNN_EXECUTORCH_LOG_ERROR(
-        "qnn_graph_execute failed. Error %d", QNN_GET_ERROR_CODE(error));
-    return Error::Internal;
-  }
+
+  // Qnn_ErrorHandle_t error = QNN_SUCCESS;
+
+  // error = backend_params_ptr_->qnn_graph_ptr_->GraphExecute(
+  //     input_tensor_structs, output_tensor_structs);
+
+  // if (error != QNN_SUCCESS) {
+  //   QNN_EXECUTORCH_LOG_ERROR(
+  //       "qnn_graph_execute failed. Error %d", QNN_GET_ERROR_CODE(error));
+  //   return Error::Internal;
+  // }
 
   if (IsTensorDump()) {
     // TODO: Need to handle the graph which is partitioned.
