@@ -35,8 +35,8 @@ MODEL_NAME = "odllm_0b5"
 
 # INPUTS = [1]
 # INPUTS = [1,2,3]
-MAX_INPUT_ID = 46
-INPUTS = [i for i in range(1, MAX_INPUT_ID)]
+MAX_INPUT_ID = 62
+INPUTS = [i for i in range(1, MAX_INPUT_ID+1)]
 # INPUTS[0] = INPUTS[len(INPUTS)-1]
 
 
