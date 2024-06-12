@@ -38,7 +38,10 @@ class InsertIOQDQ(ExportPass):
         arg_schemas = list(target._schema.arguments)[1:]
         for arg_schema in arg_schemas:
             name = arg_schema.name
-            value = quant_attrs[name]
+            try:
+                value = quant_attrs[name]
+            except KeyError:
+                print("Ignore KeyError out_dtype")
             if type(arg_schema.type) == torch.tensor and type(value) in [int, float]:
                 value = torch.tensor(value)
             ret.append(value)
