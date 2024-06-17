@@ -29,6 +29,8 @@ DEFAULT_DEBUG_HANDLE = 65535
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+QNN_BLOB_PATH = "/home/dixu/fbsource/fbcode/context_binary/cria0b5_batch_prefill_serialized.bin"
+
 
 @final
 class QnnBackend(BackendDetails):
@@ -84,15 +86,18 @@ class QnnBackend(BackendDetails):
                 continue
             else:
                 raise RuntimeError(f"{node.op} is not supported in Qnn")
-        # assert False
-        # TODO(dixu): repace by the onnx path QNN payload
-        qnn_context_binary = qnn_manager.Compile(
-            [py_op_wrapper.GetOpWrapper() for py_op_wrapper in py_op_wrapper_list]
-        )
-        assert len(qnn_context_binary) != 0, "Failed to generate Qnn context binary."
-        print(f"Generated qnn binary size: {len(qnn_context_binary)}")
+        # # assert False
+        # # TODO(dixu): repace by the onnx path QNN payload
+        # qnn_context_binary = qnn_manager.Compile(
+        #     [py_op_wrapper.GetOpWrapper() for py_op_wrapper in py_op_wrapper_list]
+        # )
+        # assert len(qnn_context_binary) != 0, "Failed to generate Qnn context binary."
+        # print(f"Generated qnn binary size: {len(qnn_context_binary)}")
         qnn_manager.Destroy()
+
+        print(f"Before read_qnn_blob: {QNN_BLOB_PATH}")
+        qnn_binary_bytes = read_qnn_blob(QNN_BLOB_PATH)
         # For now, debug_handle_map is not used by QNN ExecuTorch
         return PreprocessResult(
-            processed_bytes=bytes(qnn_context_binary), debug_handle_map={}
+            processed_bytes=qnn_binary_bytes, debug_handle_map={}
         )

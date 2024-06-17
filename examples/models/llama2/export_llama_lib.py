@@ -396,16 +396,16 @@ def get_quantizer_and_quant_params(args):
 def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     pt2e_quant_params, quantizers, quant_dtype = get_quantizer_and_quant_params(args)
 
-    llmManager = _prepare_for_llama_export(modelname, args)
-    # # llmManager.example_inputs
-    # batch_prefix
-    input_names = ['input_ids']
-    import torch
-    # torch.onnx.export(llmManager.model, inputs, "~/models/odllm0b5_prefill.onnx", input_names=input_names)
-    output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill.onnx"
-    torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
-    print(f"Saved onnx file to {output_path}")
-    assert False, "exit early"
+    # llmManager = _prepare_for_llama_export(modelname, args)
+    # # # llmManager.example_inputs
+    # # batch_prefix
+    # input_names = ['input_ids']
+    # import torch
+    # # torch.onnx.export(llmManager.model, inputs, "~/models/odllm0b5_prefill.onnx", input_names=input_names)
+    # output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill.onnx"
+    # torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
+    # print(f"Saved onnx file to {output_path}")
+    # assert False, "exit early"
     # import pdb; pdb.set_trace()
 
     # inputs = {'input_ids':llmManager.example_inputs, 'attention_mask': padded_attention_mask, 'position_ids': position_ids,}
