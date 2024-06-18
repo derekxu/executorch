@@ -87,6 +87,7 @@ class QnnBackend(BackendDetails):
         qnn_context_binary = qnn_manager.Compile(
             [py_op_wrapper.GetOpWrapper() for py_op_wrapper in py_op_wrapper_list]
         )
+        print(f"Qnn context binary type: {type(qnn_context_binary)}")
         assert len(qnn_context_binary) != 0, "Failed to generate Qnn context binary."
         qnn_manager.Destroy()
         # For now, debug_handle_map is not used by QNN ExecuTorch
