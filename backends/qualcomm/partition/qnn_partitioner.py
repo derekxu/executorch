@@ -28,6 +28,8 @@ from torch.fx.passes.operator_support import OperatorSupportBase
 
 from .common_defs import allow_list_operator, not_supported_operator
 
+READ_QNN_BLOB = True
+
 
 class QnnOperatorSupport(OperatorSupportBase):
     def __init__(
@@ -58,6 +60,10 @@ class QnnOperatorSupport(OperatorSupportBase):
         self.qnn_manager.Init()
 
     def is_node_supported(self, _, node: torch.fx.Node) -> bool:
+        # Enforce 1 QNN blob
+        if READ_QNN_BLOB:
+            return True
+
         if node.op != "call_function" or node.target in not_supported_operator:
             return False
 
@@ -129,7 +135,7 @@ class QnnPartitioner(Partitioner):
         title = "cria"
         path = "/tmp"
         draw_graph(title, path, edge_program.graph_module)
-        print(f"Saved CPU edge program to {path}/{title}.svg")
+        print(f"Saved CPU edge program to {path}/{title}.svg {__file__}", flush=True)
 
         return generate_partitions_from_list_of_nodes(
             edge_program.graph_module,
@@ -140,7 +146,7 @@ class QnnPartitioner(Partitioner):
         # assert False
         default_tag = None
         for partition in partitions:
-            print(f"DX tagging nodes for partition {partition.id}")
+            print(f"DX tagging nodes for partition {partition.id}", flush=True)
             for node in partition.nodes:
                 # print(f"DX tagging node {node.name}")
                 delegation_tag = f"qnn_{partition.id}"
@@ -152,7 +158,7 @@ class QnnPartitioner(Partitioner):
                 # node.meta["delegation_tag"] = delegation_tag
                 self.partition_tags[delegation_tag] = self.delegation_spec
 
-        print(f"DX Partition tags: {self.partition_tags}")
+        print(f"DX Partition tags: {self.partition_tags}", flush=True)
 
     # override
     def partition(self, edge_program: torch.export.ExportedProgram) -> PartitionResult:

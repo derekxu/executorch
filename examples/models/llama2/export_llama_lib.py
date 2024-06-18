@@ -396,7 +396,7 @@ def get_quantizer_and_quant_params(args):
 def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     pt2e_quant_params, quantizers, quant_dtype = get_quantizer_and_quant_params(args)
 
-    # llmManager = _prepare_for_llama_export(modelname, args)
+    llmManager = _prepare_for_llama_export(modelname, args)
     # # # llmManager.example_inputs
     # # batch_prefix
     # input_names = ['input_ids']
@@ -415,12 +415,11 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     # position_ids (input_pos ? ): Scalar tensor indicating size of window of the caches
 
     # export_to_edge
-    builder_exported_to_edge = (
-        _prepare_for_llama_export(modelname, args)
-        .capture_pre_autograd_graph()
-        .pt2e_quantize(quantizers)
-        .export_to_edge()
-    )
+    print(f"DX input len of tokens: {len(llmManager.example_inputs)}")
+    print("DX Before pass quantize", flush=True)
+    quantize_passed = llmManager.capture_pre_autograd_graph().pt2e_quantize(quantizers)
+    print("DX Before export to edge", flush=True)
+    builder_exported_to_edge = quantize_passed.export_to_edge()
 
     modelname = builder_exported_to_edge.modelname
 
@@ -448,12 +447,13 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
 
     if args.qnn:
         partitioners.append(get_qnn_partitioner(args, quant_dtype))
-        # pyre-ignore: Undefined import [21]: Could not find a module corresponding to import `executorch.backends.qualcomm.utils.utils`
-        from executorch.backends.qualcomm.utils.utils import _transform
+        # # pyre-ignore: Undefined import [21]: Could not find a module corresponding to import `executorch.backends.qualcomm.utils.utils`
+        # from executorch.backends.qualcomm.utils.utils import _transform
 
-        # pyre-ignore: Undefined attribute [16]: Module `executorch.backends` has no attribute `qualcomm`, Optional type has no attribute `exported_program`
-        _transform(builder_exported_to_edge.edge_manager.exported_program())
+        # # pyre-ignore: Undefined attribute [16]: Module `executorch.backends` has no attribute `qualcomm`, Optional type has no attribute `exported_program`
+        # _transform(builder_exported_to_edge.edge_manager.exported_program())
 
+    print(f"DX Before export to_backend {__file__}", flush=True)
     if args.generate_etrecord:
         if not builder_exported_to_edge.edge_manager:
             raise ValueError("Unable to generate etrecord due to missing edge manager.")
