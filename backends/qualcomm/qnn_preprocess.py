@@ -93,11 +93,13 @@ class QnnBackend(BackendDetails):
         # )
         # assert len(qnn_context_binary) != 0, "Failed to generate Qnn context binary."
         # print(f"Generated qnn binary size: {len(qnn_context_binary)}")
+        # NOTE: qnn_context_binary is a 1d np.ndarray: P1423514227
         qnn_manager.Destroy()
 
         print(f"Before read_qnn_blob: {QNN_BLOB_PATH}")
-        qnn_binary_bytes = read_qnn_blob(QNN_BLOB_PATH)
+        import numpy as np
+        qnn_context_binary = np.fromfile(QNN_BLOB_PATH, dtype=np.uint8)
         # For now, debug_handle_map is not used by QNN ExecuTorch
         return PreprocessResult(
-            processed_bytes=qnn_binary_bytes, debug_handle_map={}
+            processed_bytes=bytes(qnn_context_binary), debug_handle_map={}
         )
