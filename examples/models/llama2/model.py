@@ -25,7 +25,7 @@ except ImportError:
 
 from ..model_base import EagerModelBase
 
-
+# model files path: /home/dixu/et_oss/executorch/examples/models/llama2/params/odllm_0b5.json
 BF16_LIST = ["odllm_0b5", "odllm_1b4", "llama_7b"]
 
 # MODEL_NAME = "dummy_400k"
