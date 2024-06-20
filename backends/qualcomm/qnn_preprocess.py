@@ -28,6 +28,8 @@ DEFAULT_DEBUG_HANDLE = 65535
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+QNN_BLOB_PATH = "/home/dixu/models/bolt_onnx/context_binary/cria0b5_batch_prefill_serialized.bin"
+READ_ONNX = True
 
 @final
 class QnnBackend(BackendDetails):
@@ -53,6 +55,15 @@ class QnnBackend(BackendDetails):
 
         pass_result = qnn_compiler_passes(edge_program.graph_module)
         assert pass_result is not None
+
+        if READ_ONNX:
+            qnn_manager.Destroy()
+            print(f"Before read_qnn_blob: {QNN_BLOB_PATH}, {__file__}")
+            import numpy as np
+            qnn_context_binary = np.fromfile(QNN_BLOB_PATH, dtype=np.uint8)
+            result = PreprocessResult(bytes(qnn_context_binary))
+            return result
+
 
         enable_tensor_dump = qnn_manager.IsTensorDump()
         nodes_to_wrappers = {}
