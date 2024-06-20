@@ -105,6 +105,8 @@ def get_qnn_partitioner(args, quant_dtype):
     if args.pt2e_quantize:
         use_fp16 = False
 
+    print(f"DX returning QnnPartitioner use_fp16={use_fp16}, {__file__}", flush=True)
+
     return QnnPartitioner(
         generate_qnn_executorch_compiler_spec(
             soc_model=QcomChipset.SM8650,  # default to SM8650

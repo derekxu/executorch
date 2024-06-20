@@ -111,7 +111,7 @@ def _(
     for cls in BackendDetails.__subclasses__():
         if backend_id == cls.__name__:
             copied_edge_program = copy.deepcopy(edge_program)
-            print("DX calling cls.preprocess()")
+            print(f"DX calling cls.preprocess() {__file__}")
             preprocess_result: PreprocessResult = cls.preprocess(
                 copied_edge_program,
                 compile_specs,
