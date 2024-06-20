@@ -198,7 +198,7 @@ def _partition_and_lower_one_graph_module(
     """
     Partitioned and lowered the graph module based on the partition tag, this is to handle one graph module.
     """
-    print("DX START _partition_and_lower_one_graph_module()")
+    print(f"DX START _partition_and_lower_one_graph_module(), {__file__}")
     for tag, delegation_spec in partition_result.partition_tags.items():
         print(f"DX  partition_tags loop, tag: {tag}")
         # Create partition with nodes containing this tag. There should only be

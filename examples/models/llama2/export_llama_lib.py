@@ -415,10 +415,10 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     # position_ids (input_pos ? ): Scalar tensor indicating size of window of the caches
 
     # export_to_edge
-    print(f"DX input len of tokens: {len(llmManager.example_inputs)}")
+    print(f"DX input len of tokens: {len(llmManager.example_inputs)},  {__file__}", flush=True)
     print("DX Before pass quantize", flush=True)
     quantize_passed = llmManager.capture_pre_autograd_graph().pt2e_quantize(quantizers)
-    print("DX Before export to edge", flush=True)
+    print(f"DX Before export to edge {__file__}", flush=True)
     builder_exported_to_edge = quantize_passed.export_to_edge()
 
     modelname = builder_exported_to_edge.modelname
