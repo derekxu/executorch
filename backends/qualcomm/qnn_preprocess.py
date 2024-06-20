@@ -41,6 +41,7 @@ class QnnBackend(BackendDetails):
     ) -> PreprocessResult:
         option = generate_qnn_executorch_option(compile_specs)
         qnn_manager = PyQnnManager.QnnManager(option)
+        print(f"DX calling QnnManager.Init(), {__file__}", flush=True)
         qnn_manager.Init()
 
         # QNN Delegate Specific Passes

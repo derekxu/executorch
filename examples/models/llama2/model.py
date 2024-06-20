@@ -222,6 +222,12 @@ the checkpoint format to avoid generating faulty models.
 
     # assumption is the custom op doesnt support dynamic shape right now. It might but its untested so lets first get static shape working
     def get_example_inputs_kvcache_sdpa(self):
+        if not self.use_kv_cache:
+            return (
+                torch.tensor(
+                    [BATCH_PREFILL_INPUTS], dtype=torch.long
+                ),  # tokens, with kv cache our input token length is always just 1 token.
+            )
         return (
             torch.tensor(
                 [[1]], dtype=torch.long

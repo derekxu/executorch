@@ -361,6 +361,8 @@ def _prepare_for_llama_export(modelname: str, args) -> LlamaEdgeManager:
             transforms.append(replace_sdpa_with_simple_sdpa)
             transforms.append(replace_causal_mask)
 
+    transforms.append(replace_sdpa_with_simple_sdpa)
+
     print(f"DX dtype_override: {dtype_override}")
     return (
         load_llama_model(
@@ -382,6 +384,9 @@ def _prepare_for_llama_export(modelname: str, args) -> LlamaEdgeManager:
 
 
 def get_quantizer_and_quant_params(args):
+    # quant_args = args
+    # quant_args.qnn = False
+    # quant_args.xnnpack = True
     pt2e_quant_params = _get_pt2e_quantization_params(args)
     quantizers = get_pt2e_quantizers(pt2e_quant_params, args)
     quant_dtype = None
@@ -416,8 +421,9 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
 
     # export_to_edge
     print(f"DX input len of tokens: {len(llmManager.example_inputs)},  {__file__}", flush=True)
-    print("DX Before pass quantize", flush=True)
+    print(f"DX Before pass quantize, num quantizer={len(quantizers)}", flush=True)
     quantize_passed = llmManager.capture_pre_autograd_graph().pt2e_quantize(quantizers)
+    # quantize_passed = llmManager.capture_pre_autograd_graph().pt2e_quantize([])
     print(f"DX Before export to edge {__file__}", flush=True)
     builder_exported_to_edge = quantize_passed.export_to_edge()
 
@@ -472,7 +478,9 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
             )
             logging.info("Generated etrecord.bin")
     else:
-        builder = builder_exported_to_edge.to_backend(partitioners).to_executorch()
+        backend = builder_exported_to_edge.to_backend(partitioners)
+        print(f"DX Before export to_executorch {__file__}", flush=True)
+        builder = backend.to_executorch()
 
     if args.profile_memory:
         generate_memory_trace(builder.export_program, "memory_profile.json")

@@ -272,6 +272,7 @@ class LlamaEdgeManager:
             )
         return self
 
+    # pt2e_quantize
     def pt2e_quantize(
         self, quantizers: Optional[List[Quantizer]]
     ) -> "LlamaEdgeManager":
@@ -344,7 +345,7 @@ class LlamaEdgeManager:
         if partitioners is None:
             logging.info("No partitioner provided, passing...")
         else:
-            print(f"DX Number of partitioners: {len(partitioners)}")
+            print(f"DX Number of partitioners: {len(partitioners)}, {__file__}")
             for partitioner in partitioners:
                 if partitioner is not None:
                     assert (

@@ -275,6 +275,8 @@ class QnnQuantizer(Quantizer):
             "8bit_act": torch.int8,
             "16bit_act": torch.int16,
         }
+        self.skip_quant = False
+        self.skip_transform = False
 
     def _annotate(self, gm: GraphModule) -> None:
         for node in gm.graph.nodes:
@@ -330,6 +332,13 @@ class QnnQuantizer(Quantizer):
             self.bit8_quant_ops.remove(op)
             self.bit16_quant_ops.add(op)
 
+    def toggle_skip_quant(self) -> None:
+        self.skip_quant = not self.skip_quant
+
+    def toggle_skip_transform(self) -> None:
+        self.skip_transform = not self.skip_transform
+
+
     def add_custom_quant_annotations(
         self, custom_quant_annotations: Sequence[Callable]
     ) -> None:
@@ -346,6 +355,9 @@ class QnnQuantizer(Quantizer):
                 self.bit16_quant_ops.remove(op)
 
     def annotate(self, model: GraphModule) -> GraphModule:
+        if self.skip_quant:
+            return model
+
         self._annotate(model)
         self._annotate_custom_annotation(model)
 
@@ -384,6 +396,8 @@ class QnnQuantizer(Quantizer):
         self._update_per_channel_weight_quant_ops(linear_ops, enable)
 
     def transform_for_annotation(self, model: GraphModule) -> GraphModule:
+        if self.skip_transform:
+            return model
         model = RemoveClone()(model).graph_module
         model = ReduceDynamicRange()(model).graph_module
         model = RecomposePixelUnshuffle(quantization_capture=True)(model).graph_module
