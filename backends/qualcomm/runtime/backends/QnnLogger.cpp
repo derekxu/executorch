@@ -68,7 +68,7 @@ QnnLogger::QnnLogger(
       default:
         QNN_EXECUTORCH_LOG_ERROR("Unknown logging level %d", log_level);
     }
-    QNN_EXECUTORCH_LOG_INFO("create QNN Logger with log_level %d", log_level);
+    QNN_EXECUTORCH_LOG_INFO("DX (QnnLogger.cpp) create QNN Logger with log_level %d", log_level);
     Qnn_ErrorHandle_t error =
         qnn_interface.qnn_log_create(callback, qnn_log_level, &handle_);
 

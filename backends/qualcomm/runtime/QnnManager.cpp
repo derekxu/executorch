@@ -139,7 +139,7 @@ Error QnnManager::Init() {
   if (backend_params_ptr_->backend_init_state_ ==
       BackendInitializeState::UNINITIALIZED) {
     QNN_EXECUTORCH_LOG_INFO(
-        "Initialize Qnn backend "
+        "DX (QnnManager.cpp) Initialize Qnn backend "
         "parameters for Qnn executorch backend type %d",
         options_->backend_options()->backend_type());
     backend_params_ptr_ = QnnBackendFactory().Create(
