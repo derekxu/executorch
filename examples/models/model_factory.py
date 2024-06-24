@@ -49,7 +49,9 @@ class EagerModelFactory:
                     model.get_dynamic_shapes(),
                 )
             else:
-                return model.get_eager_model(), model.get_example_inputs(), None
+                example_inputs = model.get_example_inputs()
+                print(f"DX get example input size: {example_inputs.size()}, {__file__}", flush=True)
+                return model.get_eager_model(), example_inputs, None
 
         raise ValueError(
             f"Model class '{model_class_name}' not found in module '{module_name}'."

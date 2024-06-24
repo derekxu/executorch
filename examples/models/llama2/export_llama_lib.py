@@ -13,6 +13,8 @@ import shlex
 from pathlib import Path
 from typing import Union
 
+import torch
+
 import pkg_resources
 
 from executorch.sdk.etrecord import generate_etrecord
@@ -50,6 +52,14 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 pkg_name = __name__
 verbosity_setting = None
 
+# EXPORT_FORMAT_LIST = ["onnx", "torchscript", "executorch"]
+# EXPORT_FORMAT = "torchscript"
+
+
+"""
+Run with below
+with-proxy python -m examples.models.llama2.export_llama -v --qnn --pt2e_quantize qnn_16a4w -c /home/dixu/models/odllm0b5/odllm_0b5.pth  -p /home/dixu/models/odllm0b5/odllm_0b5.json
+"""
 
 def set_pkg_name(name: str) -> None:
     global pkg_name
@@ -397,14 +407,17 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     pt2e_quant_params, quantizers, quant_dtype = get_quantizer_and_quant_params(args)
 
     llmManager = _prepare_for_llama_export(modelname, args)
+
+    # assert EXPORT_FORMAT in EXPORT_FORMAT
     # # llmManager.example_inputs
     # batch_prefix
     input_names = ['input_ids']
-    import torch
+    # input_len = 48
+    # inputs = torch.tensor([i for i in range(1,input_len+1)], dtype=torch.long)
     # torch.onnx.export(llmManager.model, inputs, "~/models/odllm0b5_prefill.onnx", input_names=input_names)
-    output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill.onnx"
+    output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill_test.onnx"
     torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
-    print(f"Saved onnx file to {output_path}")
+    print(f"Num input tokens={llmManager.example_inputs.size()}, Saved onnx file to {output_path}", flush=True)
     assert False, "exit early"
     # import pdb; pdb.set_trace()
 

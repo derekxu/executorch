@@ -211,14 +211,13 @@ the checkpoint format to avoid generating faulty models.
             return self.model_.to(torch.float32)
 
     def get_example_inputs(self):
+        print(f"DX START get_example_inputs BATCH_PREFILL_INPUTS={len(BATCH_PREFILL_INPUTS)}, kv_cache={self.use_kv_cache}", flush=True)
         if self.use_kv_cache:
             return self.get_example_inputs_kvcache_sdpa()
         else:
-            return (
-                torch.tensor(
-                    [BATCH_PREFILL_INPUTS], dtype=torch.long
-                ),  # tokens, with kv cache our input token length is always just 1 token.
-            )
+            inputs = torch.tensor([BATCH_PREFILL_INPUTS], dtype=torch.long)
+            print(f"DX getting input size: {inputs.size()}", flush=True)
+            return inputs
 
     # assumption is the custom op doesnt support dynamic shape right now. It might but its untested so lets first get static shape working
     def get_example_inputs_kvcache_sdpa(self):
