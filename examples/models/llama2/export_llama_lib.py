@@ -52,8 +52,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 pkg_name = __name__
 verbosity_setting = None
 
-# EXPORT_FORMAT_LIST = ["onnx", "torchscript", "executorch"]
-# EXPORT_FORMAT = "torchscript"
+EXPORT_ONNX = True
 
 
 """
@@ -408,24 +407,14 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
 
     llmManager = _prepare_for_llama_export(modelname, args)
 
-    # assert EXPORT_FORMAT in EXPORT_FORMAT
     # # llmManager.example_inputs
     # batch_prefix
-    input_names = ['input_ids']
-    # input_len = 48
-    # inputs = torch.tensor([i for i in range(1,input_len+1)], dtype=torch.long)
-    # torch.onnx.export(llmManager.model, inputs, "~/models/odllm0b5_prefill.onnx", input_names=input_names)
-    output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill_test.onnx"
-    torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
-    print(f"Num input tokens={llmManager.example_inputs.size()}, Saved onnx file to {output_path}", flush=True)
-    assert False, "exit early"
-    # import pdb; pdb.set_trace()
-
-    # inputs = {'input_ids':llmManager.example_inputs, 'attention_mask': padded_attention_mask, 'position_ids': position_ids,}
-    # input_names = ['input_ids', 'attention_mask', 'position_ids']
-
-    # attention_mask: 
-    # position_ids (input_pos ? ): Scalar tensor indicating size of window of the caches
+    if EXPORT_ONNX:
+        input_names = ['input_ids']
+        output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill_test.onnx"
+        torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
+        print(f"Num input tokens={llmManager.example_inputs.size()}, Saved onnx file to {output_path}", flush=True)
+        assert False, "exit early"
 
     # export_to_edge
     builder_exported_to_edge = (
