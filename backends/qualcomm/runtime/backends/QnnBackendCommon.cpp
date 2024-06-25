@@ -30,6 +30,12 @@ QnnBackend::~QnnBackend() {
 Error QnnBackend::Configure() {
   // create qnn backend
   const QnnInterface& qnn_interface = implementation_.GetQnnInterface();
+  Qnn_ApiVersion_t qnn_version;
+  qnn_interface.qnn_backend_get_api_version(&qnn_version);
+  QNN_EXECUTORCH_LOG_INFO("Loaded QNN core API version %d.%d; patch: %d", qnn_version.coreApiVersion.major, qnn_version.coreApiVersion.minor, qnn_version.coreApiVersion.patch);
+  QNN_EXECUTORCH_LOG_INFO("Loaded QNN backend API version %d.%d; patch: %d", qnn_version.backendApiVersion.major, qnn_version.backendApiVersion.minor, qnn_version.backendApiVersion.patch);
+  QNN_EXECUTORCH_LOG_INFO("Matched QNN version %d.%d", qnn_version.coreApiVersion.major, qnn_version.backendApiVersion.minor);
+
   Qnn_ErrorHandle_t error = QNN_SUCCESS;
 
   std::vector<const QnnBackend_Config_t*> temp_backend_config;

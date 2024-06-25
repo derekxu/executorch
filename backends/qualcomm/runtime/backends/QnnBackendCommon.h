@@ -15,6 +15,7 @@
 
 #include "QnnBackend.h"
 #include "QnnCommon.h"
+#include "QnnTypes.h"
 namespace torch {
 namespace executor {
 namespace qnn {
