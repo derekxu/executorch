@@ -110,7 +110,7 @@ def get_qnn_partitioner(args, quant_dtype):
 
     return QnnPartitioner(
         generate_qnn_executorch_compiler_spec(
-            soc_model=QcomChipset.SM8650,  # default to SM8650
+            soc_model=QcomChipset.SM8450,  # default to SM8650
             backend_options=generate_htp_compiler_spec(use_fp16=use_fp16),
             debug=False,
             saver=False,
