@@ -402,9 +402,16 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     input_names = ['input_ids']
     import torch
     # torch.onnx.export(llmManager.model, inputs, "~/models/odllm0b5_prefill.onnx", input_names=input_names)
-    output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/odllm0b5_prefill.onnx"
+    """
+    Run command
+
+    For onnx batch prefill only
+    with-proxy python -m examples.models.llama2.export_llama --qnn --pt2e_quantize qnn_16a4w -c /home/dixu/models/odllm0b5/odllm_0b5.pth  -p /home/dixu/models/odllm0b5/odllm_0b5.json 2>&1 | tee /tmp/odllm0b5_debug; echo -e "\07"
+    """
+    output_path = "/home/dixu/models/bolt_onnx/cria_test/onnx_export/cria_batch_prefill.onnx"
     torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
-    print(f"Saved onnx file to {output_path}")
+    print(f"Saved onnx file to {output_path}", flush=True)
+    print(f"Input size: {llmManager.example_inputs[0].size()}", flush=True)
     assert False, "exit early"
     # import pdb; pdb.set_trace()
 
