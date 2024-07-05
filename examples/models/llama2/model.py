@@ -26,7 +26,7 @@ except ImportError:
 
 from ..model_base import EagerModelBase
 
-INPUT_TOKEN_LEN = 48
+INPUT_TOKEN_LEN = 1
 BATCH_PREFILL_INPUTS = [x for x in range(1,INPUT_TOKEN_LEN+1)]
 
 class Llama2Model(EagerModelBase):

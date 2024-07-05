@@ -49,7 +49,7 @@ logging.basicConfig(level=logging.INFO, format=FORMAT)
 
 pkg_name = __name__
 verbosity_setting = None
-OUTPUT_PATH = "/home/dixu/models/bolt_onnx/llama3b_48tokens/onnx_export/llama3b_48tokens.onnx"
+OUTPUT_PATH = "/home/dixu/models/bolt_onnx/llama3b_1tokens/onnx_export/llama3b_8layers_1tokens.onnx"
 
 
 def set_pkg_name(name: str) -> None:
@@ -410,7 +410,11 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     with-proxy python -m examples.models.llama2.export_llama --qnn --pt2e_quantize qnn_16a4w -c /home/dixu/models/odllm0b5/odllm_0b5.pth  -p /home/dixu/models/odllm0b5/odllm_0b5.json 2>&1 | tee /tmp/odllm0b5_debug; echo -e "\07"
     """
     output_path = OUTPUT_PATH
-    torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
+    try:
+        torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
+    except:
+        print("Failed to export to onnx, did you created the output directory?", flush=True)
+        raise
     print(f"Saved onnx file to {output_path}", flush=True)
     print(f"Input size: {llmManager.example_inputs[0].size()}", flush=True)
     assert False, "exit early"
