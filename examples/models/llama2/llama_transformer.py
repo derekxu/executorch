@@ -432,6 +432,27 @@ class TransformerBlock(nn.Module):
             out = h + self.feed_forward(self.ffn_norm(h))
         return out
 
+class OnnxKvTransformer(nn.Module):
+    def __init__(self, params: ModelArgs):
+        super().__init__()
+        self.vocab_size = params.vocab_size
+        self.n_layers = params.n_layers
+
+        self.tok_embeddings = nn.Embedding(params.vocab_size, params.dim)
+        self.layers = torch.nn.ModuleList()
+        for layer_id in range(params.n_layers):
+            self.layers.append(TransformerBlock(layer_id, params))
+
+    def forward(self, tokens: torch.Tensor, freqs_cos, freqs_sin, input_pos=None):  # x: 1xN
+        _bsz, seqlen = tokens.shape
+        h = self.tok_embeddings(tokens)
+        for layer in self.layers:
+            h = layer(
+                h,
+                freqs_cos,
+                freqs_sin,
+                input_pos,
+            )
 
 class Transformer(nn.Module):
     def __init__(self, params: ModelArgs):

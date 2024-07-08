@@ -398,6 +398,12 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     pt2e_quant_params, quantizers, quant_dtype = get_quantizer_and_quant_params(args)
 
     llmManager = _prepare_for_llama_export(modelname, args)
+    if args.use_kv_cache:
+        input_names = ['input_ids', 'freqs_cos']
+        # TODO: implement for KV cache
+        print("Onnx KV cache is not supported yet; use 1 token BERT mode for benchmark")
+
+
     # # llmManager.example_inputs
     # batch_prefix
     input_names = ['input_ids']
@@ -411,13 +417,16 @@ def _export_llama(modelname, args) -> LlamaEdgeManager:  # noqa: C901
     """
     output_path = OUTPUT_PATH
     try:
+        import pdb; pdb.set_trace()
+        # llmManager.model(llmManager.example_inputs[0], llmManager.example_inputs[1])
+        llmManager.model.freqs_cos
         torch.onnx.export(llmManager.model, llmManager.example_inputs, output_path, input_names=input_names)
     except:
         print("Failed to export to onnx, did you created the output directory?", flush=True)
         raise
     print(f"Saved onnx file to {output_path}", flush=True)
     print(f"Input size: {llmManager.example_inputs[0].size()}", flush=True)
-    assert False, "exit early"
+    assert False, "exit early batch prefill"
     # import pdb; pdb.set_trace()
 
     # inputs = {'input_ids':llmManager.example_inputs, 'attention_mask': padded_attention_mask, 'position_ids': position_ids,}
